@@ -49,5 +49,11 @@ Name=Pikaraoke
 Exec=/home/pi/pikaraoke_start_script.sh
 ```
 
-Since pikaraoke is installed in a virtual environment (.venv)
+<!-- Since pikaraoke is installed in a virtual environment (.venv) -->
+Put the `pikaraoke_start_script.sh` in the home directory. 
+
+Make the file executable: 
+```
+chmod +x ~/pikaraoke_start_script.sh
+```
 
