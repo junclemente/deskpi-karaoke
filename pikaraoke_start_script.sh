@@ -17,11 +17,12 @@ while true; do
     if check_internet; then
         echo "Internet connection found! Launching pikaraoke..." | tee -a $LOGFILE
         zenity --info --text="Internet connection found! Launching Pikaraoke..." --timeout=1
-        pikaraoke > /home/pi/pikaraoke_output.log 2>&1
+        source /home/pi/.venv/bin/activate # Activate the virtual environment
+        pikaraoke > /home/pi/pikaraoke_output.log 2>&1 # Launch pikaraoke
         break  # Exit the loop once pikaraoke is launched
     else
         echo "No internet connection. Retrying in 15 seconds..." | tee -a $LOGFILE
-        zenity --info --text="Pikaraoke cannot start without an internet connection" --timeout=14
+        zenity --info --text="Pikaraoke cannot start without an internet connection. Retrying in 15 seconds..." --timeout=14
         sleep 1 # Wait before checking again
     fi
 done
