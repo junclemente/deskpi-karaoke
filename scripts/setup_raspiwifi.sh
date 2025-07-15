@@ -1,6 +1,4 @@
-# Generate a tailored RaspiWiFi setup script for the user's installer flow
-
-setup_raspiwifi = """#!/bin/bash
+#!/bin/bash
 
 LOGFILE="/home/pi/raspiwifi_setup.log"
 RASPIFI_REPO="https://github.com/jasbur/RaspiWiFi.git"
@@ -43,13 +41,3 @@ sudo ./install.py
 
 echo "✅ RaspiWiFi installation complete. Rebooting into AP mode..." | tee -a $LOGFILE
 sudo reboot
-"""
-
-# Save this script to scripts/setup_raspiwifi.sh
-raspiwifi_path = "/mnt/data/pikaraoke/scripts/setup_raspiwifi.sh"
-os.makedirs(os.path.dirname(raspiwifi_path), exist_ok=True)
-
-with open(raspiwifi_path, 'w') as f:
-    f.write(setup_raspiwifi)
-
-raspiwifi_path  # Confirm path for user reference
