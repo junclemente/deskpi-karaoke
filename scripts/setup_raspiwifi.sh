@@ -14,7 +14,7 @@ else
     echo "📂 RaspiWiFi already cloned. Skipping..." | tee -a $LOGFILE
 fi
 
-cd $INSTALL_DIR
+cd $INSTALL_DIR || { echo "Failed to cd to $INSTALL_DIR"; exit 1; }
 
 # Fix for Bookworm: unmask hostapd and enable it
 echo "🔧 Ensuring hostapd is unmasked and enabled..." | tee -a $LOGFILE
