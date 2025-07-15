@@ -19,12 +19,27 @@ if ! uname -a | grep -qi "bookworm"; then
 fi
 
 ### STEP 2: Install DeskPi Lite drivers ###
-echo "🔧 Installing DeskPi Lite drivers..."
-git clone https://github.com/DeskPi-Team/deskpi_v1.git ~/deskpi_v1
-cd ~/deskpi_v1
-sudo ./install.sh
-cd ~
-rm -rf ~/deskpi_v1
+echo "🛠️ Installing DeskPi Lite drivers..."
+
+# Only install if directory doesn't exist
+if [ -d "$HOME/deskpi_v1" ]; then
+  echo "⚠️ DeskPi drivers directory already exists at ~/deskpi_v1"
+  echo "➡️ Skipping DeskPi Lite driver installation."
+else
+  git clone https://github.com/DeskPi-Team/deskpi_v1.git ~/deskpi_v1
+  if [ -f "$HOME/deskpi_v1/install.sh" ]; then
+    sudo bash ~/deskpi_v1/install.sh
+  else
+    echo "❌ Install script not found in cloned repo. Skipping installation."
+  fi
+fi
+
+if systemctl list-units --type=service | grep -q deskpi; then
+  echo "✅ DeskPi service already running. Skipping driver installation."
+else
+  # clone and install
+fi
+
 
 ### STEP 3: Install required system packages ###
 echo "📦 Installing dependencies..."
