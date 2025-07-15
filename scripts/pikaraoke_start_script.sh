@@ -20,7 +20,7 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
     if check_wifi; then
         echo "$(date): Internet connection found. Launching PiKaraoke..." | tee -a $LOGFILE
         zenity --info --text="Internet found! Launching PiKaraoke..." --timeout=2
-        # shellcheck source=/home/pi/.venv/bin/activate
+        # shellcheck disable=SC1091
         source /home/pi/.venv/bin/activate
         pikaraoke > /home/pi/pikaraoke_output.log 2>&1
         exit 0
