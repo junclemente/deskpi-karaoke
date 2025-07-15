@@ -21,24 +21,26 @@ fi
 ### STEP 2: Install DeskPi Lite drivers ###
 echo "🛠️ Installing DeskPi Lite drivers..."
 
-# Only install if directory doesn't exist
-if [ -d "$HOME/deskpi_v1" ]; then
-  echo "⚠️ DeskPi drivers directory already exists at ~/deskpi_v1"
-  echo "➡️ Skipping DeskPi Lite driver installation."
+# Skip install if DeskPi service is already running
+if systemctl list-units --type=service | grep -q deskpi; then
+  echo "✅ DeskPi service is already active. Skipping DeskPi Lite driver installation."
 else
-  git clone https://github.com/DeskPi-Team/deskpi_v1.git ~/deskpi_v1
+  # If service isn't active, check if folder exists
+  if [ -d "$HOME/deskpi_v1" ]; then
+    echo "⚠️ DeskPi drivers directory already exists at ~/deskpi_v1"
+    echo "➡️ Using existing files..."
+  else
+    git clone https://github.com/DeskPi-Team/deskpi_v1.git ~/deskpi_v1
+  fi
+
+  # Run installer if script is found
   if [ -f "$HOME/deskpi_v1/install.sh" ]; then
     sudo bash ~/deskpi_v1/install.sh
   else
-    echo "❌ Install script not found in cloned repo. Skipping installation."
+    echo "❌ Install script not found in ~/deskpi_v1. Skipping DeskPi driver installation."
   fi
 fi
 
-if systemctl list-units --type=service | grep -q deskpi; then
-  echo "✅ DeskPi service already running. Skipping driver installation."
-else
-  # clone and install
-fi
 
 
 ### STEP 3: Install required system packages ###
