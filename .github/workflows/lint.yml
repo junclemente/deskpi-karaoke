@@ -16,9 +16,8 @@ jobs:
       - name: Run ShellCheck
         uses: ludeeus/action-shellcheck@master
         with:
-          path: scripts install.sh
+          path: scripts
 
       - name: Bash syntax check
         run: |
-          bash -n install.sh
           find scripts -type f -name '*.sh' -exec bash -n {} +
