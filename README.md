@@ -14,11 +14,12 @@ It includes:
 
 ## 🧰 Hardware & Software Requirements
 
-- Raspberry Pi 4
+- [Raspberry Pi 4 (4 GB or larger)](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/)
 - Micro SD Card (16 GB or larger)
-- DeskPi Lite 4 case
-- Raspberry Pi OS (Bookworm Desktop)
+- [DeskPi Lite 4 case](https://deskpi.com/products/new-deskpi-lite-set-top-box-for-raspberry-pi-4)
+- [Raspberry Pi OS (Bookworm Desktop)](https://www.raspberrypi.com/software/operating-systems/)
   > **Do not use Lite** — Chromium is required
+- [Rasberry Pi Power Supply (15W)](https://www.raspberrypi.com/products/type-c-power-supply/)
 
 ---
 
