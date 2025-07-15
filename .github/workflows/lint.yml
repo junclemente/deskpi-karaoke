@@ -14,11 +14,11 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@v2
+        uses: ludeeus/action-shellcheck@master
         with:
           path: scripts install.sh
 
-      - name: Check bash syntax
+      - name: Bash syntax check
         run: |
           bash -n install.sh
           find scripts -type f -name '*.sh' -exec bash -n {} +
