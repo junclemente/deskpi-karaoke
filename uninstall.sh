@@ -13,7 +13,7 @@ pkill -f pikaraoke || echo "ℹ️ PiKaraoke not currently running."
 
 ### 2. Remove desktop shortcut
 echo "🗑️ Removing desktop shortcut..."
-rm -f /home/pi/Desktop/Start\\ PiKaraoke.desktop
+rm -f /home/pi/Desktop/Start\ PiKaraoke.desktop
 
 ### 3. Remove PiKaraoke virtual environment
 echo "🧽 Removing Python virtual environment..."
