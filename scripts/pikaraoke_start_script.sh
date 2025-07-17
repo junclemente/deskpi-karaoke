@@ -28,7 +28,9 @@ if iwgetid -r >/dev/null; then
   echo "✅ Connected to Wi-Fi after $elapsed seconds." | tee -a "$LOGFILE"
   echo "🚀 Launching PiKaraoke..." | tee -a "$LOGFILE"
   # shellcheck source=/home/pi/.venv/bin/activate
-  source /home/pi/.venv/bin/activate
+  if [ -f /home/pi/.venv/bin/activate ]; then
+    . /home/pi/.venv/bin/activate
+  fi
   pikaraoke >> "$LOGFILE" 2>&1
 else
   echo "❌ No Wi-Fi connection after $MAX_WAIT seconds." | tee -a "$LOGFILE"
