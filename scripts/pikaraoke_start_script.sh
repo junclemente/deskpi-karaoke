@@ -32,16 +32,18 @@ if iwgetid -r >/dev/null; then
   pikaraoke >> "$LOGFILE" 2>&1
 else
   echo "❌ No Wi-Fi connection after $MAX_WAIT seconds." | tee -a "$LOGFILE"
-  echo "♻️ Rebooting into RaspiWiFi mode..." | tee -a "$LOGFILE"
-(
-  zenity --warning \
-    --title="No Wi-Fi Detected" \
-    --text="No Wi-Fi detected.\nRebooting into RaspiWiFi setup mode..." \
-    --timeout=10
-) &
+  echo "📶 Opening Wi-Fi network selection window..." | tee -a "$LOGFILE"
 
-sleep 10
-sudo reboot
+  (
+    zenity --warning \
+      --title="No Wi-Fi Detected" \
+      --text="No Wi-Fi detected.\nPlease connect to a Wi-Fi network to continue." \
+      --timeout=10
+  ) &
 
+  sleep 1
 
+  # Launch Wi-Fi network GUI
+  nm-connection-editor &
 fi
+
