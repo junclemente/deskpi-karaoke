@@ -1,43 +1,41 @@
 #!/bin/bash
+set -e
 
-LOGFILE="/home/pi/pikaraoke_log.txt"
+LOGFILE="/home/pi/pikaraoke_output.log"
 MAX_WAIT=30
-WAIT_INTERVAL=5
-ELAPSED=0
+CHECK_INTERVAL=5
+elapsed=0
 
-echo "$(date): Starting PiKaraoke startup script..." | tee -a $LOGFILE
+echo "📡 Checking for Wi-Fi connection..." | tee -a "$LOGFILE"
 
-check_wifi() {
-    echo "$(date): Checking for internet connection..." | tee -a $LOGFILE
-    if ping -c 1 8.8.8.8 &> /dev/null; then
-        return 0
-    else
-        return 1
-    fi
-}
+# Show Zenity info popup while checking for Wi-Fi
+(
+  sleep 1
+  zenity --info \
+    --title="🔍 Searching for Wi-Fi..." \
+    --text="Trying to connect to Wi-Fi...\n\nWaiting up to $MAX_WAIT seconds before fallback." \
+    --timeout=$MAX_WAIT &
+)
 
-while [ $ELAPSED -lt $MAX_WAIT ]; do
-    if check_wifi; then
-        echo "$(date): Internet connection found. Launching PiKaraoke..." | tee -a $LOGFILE
-        zenity --info --text="Internet found! Launching PiKaraoke..." --timeout=2
-        # shellcheck disable=SC1091
-        source /home/pi/.venv/bin/activate
-        pikaraoke > /home/pi/pikaraoke_output.log 2>&1
-        exit 0
-    else
-        echo "$(date): No internet. Retrying in $WAIT_INTERVAL seconds..." | tee -a $LOGFILE
-        sleep $WAIT_INTERVAL
-        ELAPSED=$((ELAPSED + WAIT_INTERVAL))
-    fi
+# Loop until connected or timeout
+while ! iwgetid -r >/dev/null && [ $elapsed -lt $MAX_WAIT ]; do
+  sleep $CHECK_INTERVAL
+  elapsed=$((elapsed + CHECK_INTERVAL))
 done
 
-# If we reach here, no internet after waiting
-echo "$(date): No internet after $MAX_WAIT seconds. Rebooting into RaspiWiFi mode..." | tee -a $LOGFILE
-zenity --warning --text="No internet detected after ${MAX_WAIT}s. Rebooting into Wi-Fi setup mode..." --timeout=4
+# If connected, launch PiKaraoke
+if iwgetid -r >/dev/null; then
+  echo "✅ Connected to Wi-Fi after $elapsed seconds." | tee -a "$LOGFILE"
+  echo "🚀 Launching PiKaraoke..." | tee -a "$LOGFILE"
+  source /home/pi/.venv/bin/activate
+  pikaraoke >> "$LOGFILE" 2>&1
+else
+  echo "❌ No Wi-Fi connection after $MAX_WAIT seconds." | tee -a "$LOGFILE"
+  echo "♻️ Rebooting into RaspiWiFi mode..." | tee -a "$LOGFILE"
+  zenity --warning \
+    --title="No Wi-Fi Detected" \
+    --text="No Wi-Fi detected.\nRebooting into RaspiWiFi setup mode..." \
+    --timeout=10
 
-# Optional: run setup script before rebooting
-if [ -f /home/pi/scripts/setup_raspiwifi.sh ]; then
-    bash /home/pi/scripts/setup_raspiwifi.sh
+  sudo reboot
 fi
-
-sudo reboot
