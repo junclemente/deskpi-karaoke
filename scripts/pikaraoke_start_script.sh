@@ -32,10 +32,15 @@ if iwgetid -r >/dev/null; then
 else
   echo "❌ No Wi-Fi connection after $MAX_WAIT seconds." | tee -a "$LOGFILE"
   echo "♻️ Rebooting into RaspiWiFi mode..." | tee -a "$LOGFILE"
+(
   zenity --warning \
     --title="No Wi-Fi Detected" \
     --text="No Wi-Fi detected.\nRebooting into RaspiWiFi setup mode..." \
     --timeout=10
+) &
 
-  sudo reboot
+sleep 10
+sudo reboot
+
+
 fi
