@@ -55,8 +55,10 @@ else
     python3 -m venv /home/pi/.venv
 fi
 
-# shellcheck source=/home/pi/.venv/bin/activate
-source /home/pi/.venv/bin/activate
+if [ -f "/home/pi/.venv/bin/activate" ]; then
+  # shellcheck source=/home/pi/.venv/bin/activate
+  source "/home/pi/.venv/bin/activate"
+fi
 pip install --upgrade pip
 pip install pikaraoke || echo "⚠️ PiKaraoke install failed. Please install manually in the venv."
 
@@ -111,7 +113,10 @@ done
 if iwgetid -r >/dev/null; then
   echo "✅ Connected to Wi-Fi after $elapsed seconds." | tee -a "$LOGFILE"
   echo "🚀 Launching PiKaraoke..." | tee -a "$LOGFILE"
-  source /home/pi/.venv/bin/activate
+  if [ -f "/home/pi/.venv/bin/activate" ]; then
+  # shellcheck source=/home/pi/.venv/bin/activate
+  source "/home/pi/.venv/bin/activate"
+  fi
   pikaraoke >> "$LOGFILE" 2>&1
 else
   echo "❌ No Wi-Fi after $MAX_WAIT seconds. Rebooting into RaspiWiFi..." | tee -a "$LOGFILE"
