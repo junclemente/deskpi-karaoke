@@ -29,7 +29,7 @@ if iwgetid -r >/dev/null; then
   echo "🚀 Launching PiKaraoke..." | tee -a "$LOGFILE"
   if [ -f /home/pi/.venv/bin/activate ]; then
     # shellcheck source=/home/pi/.venv/bin/activate
-    . /home/pi/.venv/bin/activate
+    source /home/pi/.venv/bin/activate
   fi
   pikaraoke >> "$LOGFILE" 2>&1
 else
