@@ -1,6 +1,10 @@
 # 🎤 PiKaraoke Installer for Raspberry Pi 4 + DeskPi Lite 4
 
 ![Version](https://img.shields.io/github/v/tag/junclemente/pikaraoke-deskpi4?label=version&style=flat-square)
+![Status](https://img.shields.io/badge/status-WIP-yellow?style=flat-square)
+
+> ⚠️ **Work in Progress**  
+> This project is still under active development. Features, structure, and behavior may change frequently as it evolves. Breaking changes are likely between versions until a stable release is reached.
 
 This repo provides an automated way to install [PiKaraoke](https://github.com/vicwomg/pikaraoke) on a Raspberry Pi 4 with a DeskPi Lite 4 case running Raspberry Pi OS (Bookworm Desktop).
 
