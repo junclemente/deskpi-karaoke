@@ -28,7 +28,7 @@ It includes:
 1. **Clone this repository**
 
    ```bash
-   git clone https://github.com/yourusername/pikaraoke.git
+   git clone https://github.com/junclemente/deskpi-karaoke.git
    cd pikaraoke
    ```
 
