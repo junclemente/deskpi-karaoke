@@ -63,23 +63,23 @@ pip install --upgrade pip
 pip install pikaraoke || echo "⚠️ PiKaraoke install failed. Please install manually in the venv."
 
 ### STEP 6: Create Desktop shortcuts ###
-echo "🖥️ Creating desktop shortcuts..."
-DESKTOP_PATH="/home/pi/Desktop"
+# echo "🖥️ Creating desktop shortcuts..."
+# DESKTOP_PATH="/home/pi/Desktop"
 
-cat > "$DESKTOP_PATH/Start PiKaraoke.desktop" << EOF
-[Desktop Entry]
-Name=Start PiKaraoke
-Comment=Launch PiKaraoke
-Exec=lxterminal -e "bash -c 'source /home/pi/.venv/bin/activate && pikaraoke > /home/pi/pikaraoke_output.log 2>&1'"
-Icon=utilities-terminal
-Terminal=false
-Type=Application
-Categories=Application;Audio;
-EOF
+# cat > "$DESKTOP_PATH/Start PiKaraoke.desktop" << EOF
+# [Desktop Entry]
+# Name=Start PiKaraoke
+# Comment=Launch PiKaraoke
+# Exec=lxterminal -e "bash -c 'source /home/pi/.venv/bin/activate && pikaraoke > /home/pi/pikaraoke_output.log 2>&1'"
+# Icon=utilities-terminal
+# Terminal=false
+# Type=Application
+# Categories=Application;Audio;
+# EOF
 
-chmod +x "$DESKTOP_PATH/Start PiKaraoke.desktop"
+# chmod +x "$DESKTOP_PATH/Start PiKaraoke.desktop"
 
-echo "✅ Installation complete! You may reboot now."
+# echo "✅ Installation complete! You may reboot now."
 
 
 ### STEP 7: Copy autostart Wi-Fi launcher script from repo ###
