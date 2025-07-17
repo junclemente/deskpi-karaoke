@@ -55,6 +55,7 @@ else
     python3 -m venv /home/pi/.venv
 fi
 
+# shellcheck source=/home/pi/.venv/bin/activate
 source /home/pi/.venv/bin/activate
 pip install --upgrade pip
 pip install pikaraoke || echo "⚠️ PiKaraoke install failed. Please install manually in the venv."
