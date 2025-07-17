@@ -77,3 +77,77 @@ EOF
 chmod +x "$DESKTOP_PATH/Start PiKaraoke.desktop"
 
 echo "✅ Installation complete! You may reboot now."
+
+
+### STEP 7: Create autostart Wi-Fi launcher script ###
+echo "🚀 Creating PiKaraoke autostart Wi-Fi script..."
+START_SCRIPT="/home/pi/pikaraoke_start_script.sh"
+
+cat > "$START_SCRIPT" << 'EOF'
+#!/bin/bash
+set -e
+
+LOGFILE="/home/pi/pikaraoke_output.log"
+MAX_WAIT=30
+CHECK_INTERVAL=5
+elapsed=0
+
+echo "📡 Checking for Wi-Fi connection..." | tee -a "$LOGFILE"
+
+(
+  sleep 1
+  zenity --info \
+    --title="🔍 Searching for Wi-Fi..." \
+    --text="Trying to connect to Wi-Fi...\n\nWaiting up to $MAX_WAIT seconds before fallback." \
+    --timeout=$MAX_WAIT &
+)
+
+while ! iwgetid -r >/dev/null && [ $elapsed -lt $MAX_WAIT ]; do
+  sleep $CHECK_INTERVAL
+  elapsed=$((elapsed + CHECK_INTERVAL))
+done
+
+if iwgetid -r >/dev/null; then
+  echo "✅ Connected to Wi-Fi after $elapsed seconds." | tee -a "$LOGFILE"
+  echo "🚀 Launching PiKaraoke..." | tee -a "$LOGFILE"
+  source /home/pi/.venv/bin/activate
+  pikaraoke >> "$LOGFILE" 2>&1
+else
+  echo "❌ No Wi-Fi after $MAX_WAIT seconds. Rebooting into RaspiWiFi..." | tee -a "$LOGFILE"
+  zenity --warning \
+    --title="No Wi-Fi Detected" \
+    --text="No Wi-Fi found.\nRebooting into RaspiWiFi setup mode..." \
+    --timeout=10
+
+  sudo reboot
+fi
+EOF
+
+chmod +x "$START_SCRIPT"
+
+
+### STEP 8: Add autostart entry ###
+echo "🧩 Adding PiKaraoke to system autostart..."
+AUTOSTART_DIR="/home/pi/.config/autostart"
+AUTOSTART_FILE="$AUTOSTART_DIR/pikaraoke.desktop"
+
+mkdir -p "$AUTOSTART_DIR"
+
+cat > "$AUTOSTART_FILE" << EOF
+[Desktop Entry]
+Name=PiKaraoke Auto Start
+Comment=Wait for Wi-Fi then start PiKaraoke
+Exec=/home/pi/pikaraoke_start_script.sh
+Type=Application
+X-GNOME-Autostart-enabled=true
+EOF
+
+chmod +x "$AUTOSTART_FILE"
+
+
+echo "✅ Installation complete! You may reboot now to start PiKaraoke automatically on boot."
+
+echo "🔁 Rebooting in 10 seconds..."
+sleep 10
+sudo reboot
+
