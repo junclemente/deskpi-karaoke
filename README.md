@@ -1,18 +1,18 @@
 # 🎤 PiKaraoke Installer for Raspberry Pi 4 + DeskPi Lite 4
 
-![Version](https://img.shields.io/github/v/tag/junclemente/pikaraoke-deskpi4?label=version&style=flat-square)
+![Version](https://img.shields.io/github/v/tag/junclemente/deskpi-karaoke?label=version&style=flat-square)
 ![Status](https://img.shields.io/badge/status-WIP-yellow?style=flat-square)
 
 > ⚠️ **Work in Progress**  
-> This project is still under active development. Features, structure, and behavior may change frequently as it evolves. Breaking changes are likely between versions until a stable release is reached.
+> This project is under active development. Features and behavior may change frequently until a stable release.
 
-This repo provides an automated way to install [PiKaraoke](https://github.com/vicwomg/pikaraoke) on a Raspberry Pi 4 with a DeskPi Lite 4 case running Raspberry Pi OS (Bookworm Desktop).
+This repo provides an automated, Python-based installer for [PiKaraoke](https://github.com/vicwomg/pikaraoke) on a Raspberry Pi 4 with a DeskPi Lite 4 case running Raspberry Pi OS (Bookworm Desktop).
 
 It includes:
 
-- 💻 One-command installation
-- 📡 Automatic Wi-Fi detection with fallback to RaspiWiFi setup mode
-- 🔁 Auto-starting PiKaraoke on boot using a virtual environment
+- 💻 One-command installation via `install.py`
+- 🐍 Fully Python-driven — no `.sh` scripts
+- 🔁 Auto-starts PiKaraoke on boot after internet is detected
 
 ---
 
@@ -22,42 +22,38 @@ It includes:
 - Micro SD Card (16 GB or larger)
 - [DeskPi Lite 4 case](https://deskpi.com/products/new-deskpi-lite-set-top-box-for-raspberry-pi-4)
 - [Raspberry Pi OS (Bookworm Desktop)](https://www.raspberrypi.com/software/operating-systems/)
-  > **Do not use Lite** — Chromium is required
-- [Rasberry Pi Power Supply (15W)](https://www.raspberrypi.com/products/type-c-power-supply/)
+  > **Do not use the Lite version** — Chromium is required
+- [15W USB-C Power Supply](https://www.raspberrypi.com/products/type-c-power-supply/)
 
 ---
 
-## 🚀 Installation Steps
+## 🚀 Installation
 
 1. **Clone this repository**
 
    ```bash
-   git clone https://github.com/junclemente/deskpi-karaoke.git
-   cd pikaraoke
+   git clone -b dev https://github.com/junclemente/deskpi-karaoke.git
+   cd deskpi-karaoke
    ```
 
 2. **Run the installer**
 
    ```bash
-   chmod +x install.sh
-   ./install.sh
+   python3 install.py          # For general installs
+   python3 install.py --deskpi  # For DeskPi Lite 4 users
    ```
-
-3. The Pi will reboot once setup is complete.
 
 ---
 
 ## 📦 What the Installer Does
 
-- Installs DeskPi Lite drivers
-- Installs required packages:
-  - `ffmpeg`, `chromium-browser`, `zenity`, `python3-venv`, etc.
-- Sets up a Python virtual environment
+- Installs required system packages:
+  - `ffmpeg`, `chromium-browser`, `python3-venv`, etc.
+- Optionally installs DeskPi Lite 4 drivers
+- Creates a virtual environment: `~/.venv-pikaraoke`
 - Installs `pikaraoke` via `pip`
-- Installs autostart config
-- Adds a smart Wi-Fi check:
-  - Waits up to 30 seconds for an internet connection
-  - If no Wi-Fi found, installs and reboots into [RaspiWiFi](https://github.com/jasbur/RaspiWiFi) setup mode (`http://10.0.0.1`)
+- Copies `pikaraoke_start.py` to `~/`
+- Adds an autostart entry that launches PiKaraoke after internet is detected
 
 ---
 
@@ -65,25 +61,26 @@ It includes:
 
 On boot, the system:
 
-- Checks for an internet connection
-- If connected: launches PiKaraoke
-- If **not** connected within 30 seconds:
-  - Runs `setup_raspiwifi.sh`
-  - Reboots into hotspot mode (`raspiwifi-XXXX`)
-  - Lets you connect from your phone and configure Wi-Fi
+- Waits up to 30 seconds for internet
+- If connected: runs `pikaraoke` inside the virtual environment
+- Logs output to `~/pikaraoke_output.log`
+
+> The startup script lives at: `~/pikaraoke_start.py`  
+> It is launched via autostart from: `~/.config/autostart/pikaraoke.desktop`
 
 ---
 
 ## 📂 Project Structure
 
 ```
-pikaraoke/
-├── install.sh                    # Main installer
-├── scripts/
-│   ├── pikaraoke_start_script.sh  # Launch logic with Wi-Fi check
-│   └── setup_raspiwifi.sh         # RaspiWiFi fallback installer
+deskpi-karaoke/
+├── install.py               # Main Python installer
+├── uninstall.py             # Standard uninstaller (v0.3.0+ only)
+├── uninstall_clean.py       # Legacy cleaner (removes all previous versions)
 ├── assets/
-│   └── pikaraoke.desktop          # Autostart config
+│   ├── pikaraoke_start.py     # Python-based startup script
+│   └── pikaraoke.desktop      # Autostart config file
+├── VERSION
 └── README.md
 ```
 
@@ -92,21 +89,20 @@ pikaraoke/
 ## 🛠 Troubleshooting
 
 - ❌ **No audio?**  
-  Use `raspi-config` or desktop audio settings to select HDMI or analog output
+  Use `raspi-config` or the desktop's audio settings to switch to HDMI or analog output
 
-- ❌ **Stuck on splash screen?**  
-  Ensure `chromium-browser` is installed and not blocked by a proxy or firewall
+- ❌ **Browser doesn’t load?**  
+  Ensure `chromium-browser` is installed and accessible. The system must boot into the desktop environment.
 
 ---
 
 ## 🙌 Credits
 
-- [vicwomg/pikaraoke](https://github.com/vicwomg/pikaraoke)
-- [jasbur/RaspiWiFi](https://github.com/jasbur/RaspiWiFi)
-- DeskPi Team for the hardware support
+- [vicwomg/pikaraoke](https://github.com/vicwomg/pikaraoke) — the original PiKaraoke project
+- [DeskPi Team](https://deskpi.com/products/new-deskpi-lite-set-top-box-for-raspberry-pi-4) — for the DeskPi Lite 4 case and driver scripts
 
 ---
 
 ## 📃 License
 
-MIT License. See `LICENSE` file.
+MIT License. See the `LICENSE` file.
