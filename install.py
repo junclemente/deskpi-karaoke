@@ -123,25 +123,17 @@ def main():
 
 
 def install_autostart_entry():
-    print("🔁 Setting up autostart...")
-
+    print("🔁 Copying autostart entry from assets...")
     autostart_dir = Path.home() / ".config" / "autostart"
     autostart_dir.mkdir(parents=True, exist_ok=True)
 
-    autostart_entry = autostart_dir / "pikaraoke.desktop"
-    autostart_entry.write_text(
-        f"""[Desktop Entry]
-Name=AutoStart PiKaraoke
-Comment=Launch PiKaraoke automatically on desktop boot
-Exec=python3 /home/pi/pikaraoke_start.py
-Icon=utilities-terminal
-Terminal=false
-Type=Application
-Categories=Audio;Application;
-"""
-    )
-    autostart_entry.chmod(0o755)
-    print(f"✅ Autostart file created at: {autostart_entry}")
+    src = Path(__file__).parent / "assets" / "pikaraoke.desktop"
+    dst = autostart_dir / "pikaraoke.desktop"
+    shutil.copy(src, dst)
+    dst.chmod(0o755)
+
+    print(f"✅ Autostart file created at: {dst}")
+
 
 
 if __name__ == "__main__":
