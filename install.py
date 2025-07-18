@@ -28,7 +28,7 @@ def run_command(cmd, cwd=None):
 
 
 def is_raspberry_pi():
-    return "raspberrypi" in platform.uname().nodename.lower()
+    return "raspberrypi" in platform.uname().node.lower()
 
 
 def get_version():
