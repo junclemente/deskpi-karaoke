@@ -145,11 +145,34 @@ def main():
     setup_virtualenv()
     install_start_script()
     install_desktop_shortcut()
+    install_autostart_entry()
 
     print(
         "\n✅ Installation complete! You can launch PiKaraoke from the desktop or by running:"
     )
     print("   python3 ~/pikaraoke_start.py\n")
+
+
+def install_autostart_entry():
+    print("🔁 Setting up autostart...")
+
+    autostart_dir = Path.home() / ".config" / "autostart"
+    autostart_dir.mkdir(parents=True, exist_ok=True)
+
+    autostart_entry = autostart_dir / "pikaraoke.desktop"
+    autostart_entry.write_text(
+        f"""[Desktop Entry]
+Name=AutoStart PiKaraoke
+Comment=Launch PiKaraoke automatically on desktop boot
+Exec=python3 /home/pi/pikaraoke_start.py
+Icon=utilities-terminal
+Terminal=false
+Type=Application
+Categories=Audio;Application;
+"""
+    )
+    autostart_entry.chmod(0o755)
+    print(f"✅ Autostart file created at: {autostart_entry}")
 
 
 if __name__ == "__main__":
