@@ -3,6 +3,7 @@
 import os
 import platform
 import subprocess
+import shutil
 from pathlib import Path
 import argparse
 
@@ -87,44 +88,13 @@ def setup_virtualenv():
 
 
 def install_start_script():
-    print("🎬 Creating start script...")
-    script_path = Path.home() / "pikaraoke_start.py"
-    script_path.write_text(
-        f"""#!/usr/bin/env python3
-
-import subprocess
-import os
-from pathlib import Path
-
-venv_bin = Path.home() / ".venv-pikaraoke" / "bin"
-env = os.environ.copy()
-env["PATH"] = f"{{venv_bin}}:{{env['PATH']}}"
-
-logfile = Path.home() / "pikaraoke_output.log"
-with open(logfile, "a") as log:
-    subprocess.Popen(["pikaraoke"], stdout=log, stderr=log, env=env)
-
-print("✅ PiKaraoke launched.")
-"""
-    )
-    script_path.chmod(0o755)
+    print("🎬 Copying start script from assets...")
+    src = Path(__file__).parent / "asseets" / "pikaraoke_start.py"
+    dst = Path.home() / "pikaraoke_start.py"
+    shutil.copy(src, dst)
+    dst.chmod(0o755)
 
 
-def install_desktop_shortcut():
-    print("🖥️ Creating desktop shortcut...")
-    desktop_entry = Path.home() / "Desktop" / "Start PiKaraoke.desktop"
-    desktop_entry.write_text(
-        f"""[Desktop Entry]
-Name=Start PiKaraoke
-Comment=Launch PiKaraoke
-Exec=lxterminal -e "python3 /home/pi/pikaraoke_start.py"
-Icon=utilities-terminal
-Terminal=false
-Type=Application
-Categories=Audio;Application;
-"""
-    )
-    desktop_entry.chmod(0o755)
 
 
 # --- Main Entry Point ---
@@ -144,7 +114,6 @@ def main():
 
     setup_virtualenv()
     install_start_script()
-    install_desktop_shortcut()
     install_autostart_entry()
 
     print(
