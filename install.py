@@ -119,10 +119,9 @@ def main():
     install_autostart_entry()
     install_desktop_launcher()
 
-    print(
-        "\n✅ Installation complete! You can launch PiKaraoke from the desktop or by running:"
-    )
-    print("   python3 ~/pikaraoke_start.py\n")
+    print("\n✅ Installation complete! System will automatically reboot.")
+    print("🔄 Rebooting...")
+    subprocess.run(["sudo", "reboot"])
 
 
 def install_autostart_entry():
