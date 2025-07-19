@@ -130,7 +130,7 @@ def install_autostart_entry():
     autostart_dir = Path.home() / ".config" / "autostart"
     autostart_dir.mkdir(parents=True, exist_ok=True)
 
-    src = Path(__file__).parent / "assets" / "pikaraoke.desktop"
+    src = Path(__file__).parent / "assets" / "autostart_pikaraoke.desktop"
     dst = autostart_dir / "pikaraoke.desktop"
     shutil.copy(src, dst)
     dst.chmod(0o755)
