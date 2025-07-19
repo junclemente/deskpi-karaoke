@@ -79,7 +79,7 @@ def main():
     #     waited += CHECK_INTERVAL
 
     # zenity_error("❌ No internet found.\nPlease connect to the internet and try again.")
-        zenity_info("🔔 Connecting to internet...\nSearching for up to 30 seconds...")
+    zenity_info("🔔 Connecting to internet...\nSearching for up to 30 seconds...")
 
     start_time = time.time()
     while (time.time() - start_time) < MAX_WAIT:
