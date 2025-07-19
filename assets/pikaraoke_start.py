@@ -3,6 +3,8 @@
 import subprocess
 import time
 import socket
+import os
+from pathlib import Path
 
 CHECK_INTERVAL = 5
 MAX_WAIT = 30
@@ -49,6 +51,18 @@ def check_internet():
         return False
 
 
+def launch_pikaraoke():
+    venv_bin = Path.home() / ".venv" / "bin"
+    env = os.environ.copy()
+    env["PATH"] = f"{venv_bin}:{env['PATH']}"
+
+    logfile = Path.home() / "pikaraoke_output.log"
+    with open(logfile, "a") as log:
+        subprocess.Popen(["pikaraoke"], stdout=log, stderr=log, env=env)
+
+    print("🎤 PiKaraoke launched.")
+
+
 def main():
     zenity_info("🔔 Connecting to internet...\nSearching for 30 seconds...")
 
@@ -58,15 +72,7 @@ def main():
             zenity_blocking_info(
                 "✅ Internet connected.\nLaunching PiKaraoke...", timeout=2
             )
-            subprocess.run(
-                [
-                    "lxterminal",
-                    "-e",
-                    "bash",
-                    "-c",
-                    "source /home/pi/.venv/bin/activate && pikaraoke",
-                ]
-            )
+            launch_pikaraoke()
             return
         time.sleep(CHECK_INTERVAL)
         waited += CHECK_INTERVAL
