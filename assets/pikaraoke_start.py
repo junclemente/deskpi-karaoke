@@ -52,7 +52,7 @@ def check_internet():
 
 
 def launch_pikaraoke():
-    venv_bin = Path.home() / ".venv" / "bin"
+    venv_bin = Path.home() / ".venv-pikaraoke" / "bin"
     env = os.environ.copy()
     env["PATH"] = f"{venv_bin}:{env['PATH']}"
 
