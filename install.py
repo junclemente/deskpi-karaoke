@@ -34,12 +34,16 @@ def is_raspberry_pi():
 
 def get_version():
     try:
-        version_file = Path("VERSION")
-        if version_file.exists():
-            return version_file.read_text().strip()
+        return (
+            subprocess.check_output(
+                ["git", "describe", "--tags", "--abbrev=0"],  # Only the last tag
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:
-        pass
-    return "unknown"
+        return "unknown"
 
 
 # --- Install Tasks ---
@@ -95,8 +99,6 @@ def install_start_script():
     dst.chmod(0o755)
 
 
-
-
 # --- Main Entry Point ---
 def main():
     args = parse_args()
@@ -133,7 +135,6 @@ def install_autostart_entry():
     dst.chmod(0o755)
 
     print(f"✅ Autostart file created at: {dst}")
-
 
 
 if __name__ == "__main__":
