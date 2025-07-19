@@ -1,8 +1,9 @@
 [Desktop Entry]
 Name=Start PiKaraoke
 Comment=Launch PiKaraoke from desktop
-Exec=python3 /home/pi/desktop_pikaraoke_start.py
+Exec=python3 /home/pi/pikaraoke_start.py
 Icon=utilities-terminal
 Terminal=false
 Type=Application
 Categories=Application;
+X-GNOME-Autostart-enabled=true
