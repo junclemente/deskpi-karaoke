@@ -140,17 +140,14 @@ def install_autostart_entry():
 
 def install_desktop_launcher():
     print("📎 Installing desktop launcher...")
-
     desktop_path = Path.home() / "Desktop"
     desktop_path.mkdir(parents=True, exist_ok=True)
 
-    src = Path(__file__).parent / "assets" / "pikaraoke.desktop"
+    src = Path(__file__).parent / "assets" / "launch_pikaraoke.desktop"
     dst = desktop_path / "Start PiKaraoke.desktop"
-
     shutil.copy(src, dst)
     dst.chmod(0o755)
 
-    # Trust the desktop file (if gio is available)
     try:
         subprocess.run(
             ["gio", "set", str(dst), "metadata::trusted", "true"], check=False
