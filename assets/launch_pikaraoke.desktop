@@ -4,4 +4,4 @@ Comment=Launch PiKaraoke manually
 Exec=python3 /home/pi/desktop_pikaraoke_start.py
 Icon=utilities-terminal
 Terminal=false
-Type=Application;
+Type=Application
