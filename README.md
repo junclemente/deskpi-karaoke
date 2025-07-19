@@ -19,7 +19,7 @@ It includes:
 ## 🧰 Hardware & Software Requirements
 
 - [Raspberry Pi 4 (4 GB or larger)](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/)
-- Micro SD Card (16 GB or larger)
+- Micro SD Card (at least 16 GB, 128GB or larger recommended )
 - [DeskPi Lite 4 case](https://deskpi.com/products/new-deskpi-lite-set-top-box-for-raspberry-pi-4)
 - [Raspberry Pi OS (Bookworm Desktop)](https://www.raspberrypi.com/software/operating-systems/)
   > **Do not use the Lite version** — Chromium is required
