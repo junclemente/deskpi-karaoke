@@ -1,4 +1,8 @@
 [Desktop Entry]
+Name=AutoStart PiKaraoke
+Comment=Launch PiKaraoke automatically on desktop boot
+Exec=python3 /home/pi/pikaraoke_start.py
+Icon=utilities-terminal
+Terminal=false
 Type=Application
-Name=Pikaraoke
-Exec=/home/pi/pikaraoke_start_script.sh
+Categories=Audio;Application;
