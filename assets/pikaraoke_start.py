@@ -58,7 +58,8 @@ def launch_pikaraoke():
 
     logfile = Path.home() / "pikaraoke_output.log"
     with open(logfile, "a") as log:
-        subprocess.Popen(["pikaraoke"], stdout=log, stderr=log, env=env)
+        log.write("🎤 [LOG] launch_pikaraoke() triggered\n")
+        subprocess.Popen([str(venv_bin / "pikaraoke")], stdout=log, stderr=log, env=env)
 
     print("🎤 PiKaraoke launched.")
 
