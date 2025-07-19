@@ -117,6 +117,7 @@ def main():
     setup_virtualenv()
     install_start_script()
     install_autostart_entry()
+    install_desktop_launcher()
 
     print(
         "\n✅ Installation complete! You can launch PiKaraoke from the desktop or by running:"
@@ -135,6 +136,29 @@ def install_autostart_entry():
     dst.chmod(0o755)
 
     print(f"✅ Autostart file created at: {dst}")
+
+
+def install_desktop_launcher():
+    print("📎 Installing desktop launcher...")
+
+    desktop_path = Path.home() / "Desktop"
+    desktop_path.mkdir(parents=True, exist_ok=True)
+
+    src = Path(__file__).parent / "assets" / "pikaraoke.desktop"
+    dst = desktop_path / "Start PiKaraoke.desktop"
+
+    shutil.copy(src, dst)
+    dst.chmod(0o755)
+
+    # Trust the desktop file (if gio is available)
+    try:
+        subprocess.run(
+            ["gio", "set", str(dst), "metadata::trusted", "true"], check=False
+        )
+    except Exception as e:
+        print(f"⚠️ Could not mark launcher as trusted: {e}")
+
+    print(f"✅ Desktop launcher created at: {dst}")
 
 
 if __name__ == "__main__":
