@@ -65,32 +65,20 @@ def launch_pikaraoke():
 
 
 def main():
-    # zenity_info("🔔 Connecting to internet...\nSearching for 30 seconds...")
 
-    # waited = 0
-    # while waited < MAX_WAIT:
-    #     if check_internet():
-    #         zenity_blocking_info(
-    #             "✅ Internet connected.\nLaunching PiKaraoke...", timeout=2
-    #         )
-    #         launch_pikaraoke()
-    #         return
-    #     time.sleep(CHECK_INTERVAL)
-    #     waited += CHECK_INTERVAL
-
-    # zenity_error("❌ No internet found.\nPlease connect to the internet and try again.")
     zenity_info("🔔 Connecting to internet...\nSearching for up to 30 seconds...")
-
+    time.sleep(3) # pause for 3 seconds
     start_time = time.time()
     while (time.time() - start_time) < MAX_WAIT:
         if check_internet():
-            zenity_blocking_info("✅ Internet connected.\nLaunching PiKaraoke...", timeout=2)
+            zenity_blocking_info(
+                "✅ Internet connected.\nLaunching PiKaraoke...", timeout=2
+            )
             launch_pikaraoke()
             return
         time.sleep(CHECK_INTERVAL)
 
     zenity_error("❌ No internet found.\nPlease connect to the internet and try again.")
-
 
 
 if __name__ == "__main__":
