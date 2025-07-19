@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Start PiKaraoke
-Comment=Launch PiKaraoke from desktop
+Comment=Launch PiKaraoke on boot
 Exec=python3 /home/pi/pikaraoke_start.py
 Icon=utilities-terminal
 Terminal=false
