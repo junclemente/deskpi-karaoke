@@ -15,28 +15,11 @@ if sys.version_info < (3, 9):
     print(f"Detected version: {sys.version_info.major}.{sys.version_info.minor}")
     sys.exit(1)
 
-# --- Check for packaging module; install if missing ---
-sys.path.extend(
-    site.getusersitepackages()
-    if isinstance(site.getusersitepackages(), list)
-    else [site.getusersitepackages()]
-)
-
-try:
-    from packaging.version import Version
-except ImportError:
-    print("❌ 'packaging' module not found. Installing now...")
-    subprocess.run(
-        ["pip3", "install", "--upgrade", "packaging", "--break-system-packages"],
-        check=True,
-    )
-    from packaging.version import Version
-
 
 # --- Parse CLI Arguments ---
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Install PiKaraoke on Raspberry Pi 4 (v0.3.0)"
+        description="Install PiKaraoke on Raspberry Pi 4..."
     )
     parser.add_argument(
         "--deskpi",
@@ -50,7 +33,7 @@ def parse_args():
 def run_command(cmd, cwd=None):
     """Run a shell command and handle errors"""
     print(f"▶️  Running: {' '.join(cmd)}")
-    subprocess.run(cmd, check=True, cwd=cwd)
+from packaging.version import Version     subprocess.run(cmd, check=True, cwd=cwd)
 
 
 def is_raspberry_pi():
@@ -58,6 +41,7 @@ def is_raspberry_pi():
 
 
 def get_version():
+    # Attempt to get the latest git tag as the version of the installer project
     try:
         return (
             subprocess.check_output(
@@ -101,8 +85,6 @@ def install_system_packages():
         ]
     )
 
-    # install packaging module for version handling
-    run_command(["python3", "-m", "pip", "install", "--upgrade", "packaging"])
 
 
 def install_deskpi_drivers():
@@ -118,6 +100,7 @@ def setup_virtualenv():
         run_command(["python3", "-m", "venv", str(venv_path)])
     pip = venv_path / "bin" / "pip"
     run_command([str(pip), "install", "--upgrade", "pip"])
+    run_command([str(pip), "install", "--upgrade", "packaging"])
     run_command([str(pip), "install", "pikaraoke"])
 
 
@@ -141,13 +124,22 @@ def install_ui_module():
 # --- Main Entry Point ---
 def main():
     args = parse_args()
+
+    # Step 1: Set up the virtual environment early so packaging is available
+    setup_virtualenv()
+
+    # ✅ Now it's safe to import Version
+    from packaging.version import Version
+
     version = get_version()
     print(f"\n🎤 PiKaraoke Installer v{version} Starting...\n")
 
+    # Step 2: Clean uninstall if upgrading from older versions
     if Version(version) < Version("0.3.1"):
         print("🧹 Detected install < 0.3.1 — running uninstall_clean.py...")
         subprocess.run(["python3", "uninstall_clean.py"], check=True)
 
+    # Step 3: Check for autoupdate flag
     update_flag = Path.home() / ".pikaraoke_update_pending"
     if update_flag.exists():
         print("🔔 Update flag detected - upgrading PiKaraoke...")
@@ -156,16 +148,17 @@ def main():
         pip = venv_bin / "pip"
         run_command([str(pip), "install", "--force-reinstall", "pikaraoke"])
 
+    # Step 4: OS check & system package install
     check_platform()
-
     install_system_packages()
 
+    # Step 5: Optional DeskPi drivers
     if args.deskpi:
         install_deskpi_drivers()
     else:
         print("💡 DeskPi driver install skipped (use --deskpi to enable)")
 
-    setup_virtualenv()
+    # Step 6: Final setup steps
     install_start_script()
     install_autostart_entry()
     install_ui_module()
