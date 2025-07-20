@@ -126,6 +126,14 @@ def main():
         print("🧹 Detected install < 0.3.1 — running uninstall_clean.py...")
         subprocess.run(["python3", "uninstall_clean.py"], check=True)
 
+    update_flag = Path.home() / ".pikaraoke_update_pending"
+    if update_flag.exists():
+        print("🔔 Update flag detected - upgrading PiKaraoke...")
+        update_flag.unlink()
+        venv_bin = Path.home() / ".venv-pikaraoke" / "bin"
+        pip = venv_bin / "pip"
+        run_command([str(pip), "install", "--force-reinstall", "pikaraoke"])
+
     check_platform()
 
     install_system_packages()
