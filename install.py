@@ -19,7 +19,10 @@ try:
     from packaging.version import Version
 except ImportError:
     print("❌ 'packaging' module not found. Installing now...")
-    subprocess.run(["pip3", "install", "--upgrade", "packaging"], check=True)
+    subprocess.run(
+        ["pip3", "install", "--upgrade", "packaging", "--break-system-packages"],
+        check=True,
+    )
     from packaging.version import Version
 
 
