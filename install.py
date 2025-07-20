@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 
-import os
-import platform
-import subprocess
-import shutil
 import argparse
+import platform
+import shutil
+import subprocess
+import sys
 
 from packaging.version import Version
 from pathlib import Path
+
+if sys.version_info < (3, 9):
+    print("❌ Python 3.9+ is required to install PiKaraoke.")
+    print(f"Detected version: {sys.version_info.major}.{sys.version_info.minor}")
+    sys.exit(1)
 
 
 # --- Parse CLI Arguments ---
