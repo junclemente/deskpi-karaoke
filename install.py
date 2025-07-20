@@ -3,6 +3,7 @@
 import argparse
 import platform
 import shutil
+import site
 import subprocess
 import sys
 
@@ -15,6 +16,12 @@ if sys.version_info < (3, 9):
     sys.exit(1)
 
 # --- Check for packaging module; install if missing ---
+sys.path.extend(
+    site.getusersitepackages()
+    if isinstance(site.getusersitepackages(), list)
+    else [site.getusersitepackages()]
+)
+
 try:
     from packaging.version import Version
 except ImportError:
