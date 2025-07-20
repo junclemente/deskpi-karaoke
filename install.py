@@ -33,7 +33,7 @@ def parse_args():
 def run_command(cmd, cwd=None):
     """Run a shell command and handle errors"""
     print(f"▶️  Running: {' '.join(cmd)}")
-from packaging.version import Version     subprocess.run(cmd, check=True, cwd=cwd)
+    subprocess.run(cmd, check=True, cwd=cwd)
 
 
 def is_raspberry_pi():
@@ -84,7 +84,6 @@ def install_system_packages():
             "python3-pip",
         ]
     )
-
 
 
 def install_deskpi_drivers():
