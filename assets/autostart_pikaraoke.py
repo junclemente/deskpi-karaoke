@@ -10,7 +10,8 @@ from pathlib import Path
 from pikaraoke_ui import show_error, show_info
 
 CHECK_INTERVAL = 5
-MAX_WAIT = 30
+INITIAL_WAIT = 10
+EXTENDED_WAIT = 30
 
 
 # --- Logic ---
@@ -34,17 +35,29 @@ def launch_pikaraoke():
 
 
 def main():
-    show_info("🔔 Connecting to internet...\nSearching for up to 30 seconds...")
-    time.sleep(3)
-
+    # quiet polling - search for internet
     start_time = time.time()
-    while (time.time() - start_time) < MAX_WAIT:
+    while (time.time() - start_time) < INITIAL_WAIT:
         if check_internet():
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return
         time.sleep(CHECK_INTERVAL)
 
+    # show popup if internet not found with INITIAL_WAIT period
+    show_info(
+        "🔔 Connecting to internet...\nSearching for up to 30 seconds...", duration=2
+    )
+
+    extended_start = time.time()
+    while (time.time() - extended_start) < EXTENDED_WAIT:
+        if check_internet():
+            show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
+            launch_pikaraoke()
+            return
+        time.sleep(CHECK_INTERVAL)
+
+    # fallback if internet not found
     show_error("❌ No internet found.\nPlease connect to the internet and try again.")
 
 
