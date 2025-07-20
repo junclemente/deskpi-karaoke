@@ -4,8 +4,10 @@ import os
 import platform
 import subprocess
 import shutil
-from pathlib import Path
 import argparse
+
+from packaging.version import Version
+from pathlib import Path
 
 
 # --- Parse CLI Arguments ---
@@ -41,9 +43,10 @@ def get_version():
             )
             .decode()
             .strip()
+            .lstrip("v")
         )
     except Exception:
-        return "unknown"
+        return "0.0.0"
 
 
 # --- Install Tasks ---
@@ -114,6 +117,10 @@ def main():
     version = get_version()
     print(f"\n🎤 PiKaraoke Installer v{version} Starting...\n")
 
+    if Version(version) < Version("0.3.1"):
+        print("🧹 Detected install < 0.3.1 — running uninstall_clean.py...")
+        subprocess.run(["python3", "uninstall_clean.py"], check=True)
+
     check_platform()
 
     install_system_packages()
@@ -127,7 +134,6 @@ def main():
     install_start_script()
     install_autostart_entry()
     install_ui_module()
-    # install_desktop_launcher()
 
     print("\n✅ Installation complete! System will automatically reboot.")
     print("🔄 Rebooting...")
@@ -145,26 +151,6 @@ def install_autostart_entry():
     dst.chmod(0o755)
 
     print(f"✅ Autostart file created at: {dst}")
-
-
-# def install_desktop_launcher():
-#     print("📎 Installing desktop launcher...")
-#     desktop_path = Path.home() / "Desktop"
-#     desktop_path.mkdir(parents=True, exist_ok=True)
-
-#     src = Path(__file__).parent / "assets" / "launch_pikaraoke.desktop"
-#     dst = desktop_path / "Start PiKaraoke.desktop"
-#     shutil.copy(src, dst)
-#     dst.chmod(0o755)
-
-#     try:
-#         subprocess.run(
-#             ["gio", "set", str(dst), "metadata::trusted", "true"], check=False
-#         )
-#     except Exception as e:
-#         print(f"⚠️ Could not mark launcher as trusted: {e}")
-
-#     print(f"✅ Desktop launcher created at: {dst}")
 
 
 if __name__ == "__main__":
