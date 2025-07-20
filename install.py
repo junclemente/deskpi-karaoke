@@ -99,6 +99,15 @@ def install_start_script():
     dst.chmod(0o755)
 
 
+def install_ui_module():
+    print("📁 Copying PiKaraoke UI module...")
+    src = Path(__file__).parent / "assets" / "pikaraoke_ui.py"
+    dst = Path.home() / "pikaraoke_ui.py"
+    shutil.copy(src, dst)
+    dst.chmod(0o644)
+    print(f"✅ UI module installed at: {dst}")
+
+
 # --- Main Entry Point ---
 def main():
     args = parse_args()
@@ -117,7 +126,8 @@ def main():
     setup_virtualenv()
     install_start_script()
     install_autostart_entry()
-    install_desktop_launcher()
+    install_ui_module()
+    # install_desktop_launcher()
 
     print("\n✅ Installation complete! System will automatically reboot.")
     print("🔄 Rebooting...")
@@ -137,24 +147,24 @@ def install_autostart_entry():
     print(f"✅ Autostart file created at: {dst}")
 
 
-def install_desktop_launcher():
-    print("📎 Installing desktop launcher...")
-    desktop_path = Path.home() / "Desktop"
-    desktop_path.mkdir(parents=True, exist_ok=True)
+# def install_desktop_launcher():
+#     print("📎 Installing desktop launcher...")
+#     desktop_path = Path.home() / "Desktop"
+#     desktop_path.mkdir(parents=True, exist_ok=True)
 
-    src = Path(__file__).parent / "assets" / "launch_pikaraoke.desktop"
-    dst = desktop_path / "Start PiKaraoke.desktop"
-    shutil.copy(src, dst)
-    dst.chmod(0o755)
+#     src = Path(__file__).parent / "assets" / "launch_pikaraoke.desktop"
+#     dst = desktop_path / "Start PiKaraoke.desktop"
+#     shutil.copy(src, dst)
+#     dst.chmod(0o755)
 
-    try:
-        subprocess.run(
-            ["gio", "set", str(dst), "metadata::trusted", "true"], check=False
-        )
-    except Exception as e:
-        print(f"⚠️ Could not mark launcher as trusted: {e}")
+#     try:
+#         subprocess.run(
+#             ["gio", "set", str(dst), "metadata::trusted", "true"], check=False
+#         )
+#     except Exception as e:
+#         print(f"⚠️ Could not mark launcher as trusted: {e}")
 
-    print(f"✅ Desktop launcher created at: {dst}")
+#     print(f"✅ Desktop launcher created at: {dst}")
 
 
 if __name__ == "__main__":
