@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+[0.3.2] - 2024-07-18
+
+## 📦 Version-Aware Installer + Auto-Updater
+
+### 🚀 New Features
+
+- 🧠 **Installer version check** using `packaging.version.Version`
+- 🔁 **Auto-reinstall PiKaraoke** if major version change is detected (via `.pikaraoke_update_pending` flag)
+- 💥 **Legacy cleanup**: Automatically runs `uninstall_clean.py` if previous version is `< 0.3.1`
+
+### 🛠️ Improvements
+
+- ✅ All `pip` installs (including `packaging`) are now safely installed inside `.venv-pikaraoke`
+- 🧽 Cleaned up `install_system_packages()` to avoid global pip install conflicts (PEP 668 safe)
+- 🧪 Python version check: requires **Python 3.9+** at start of install
+
+### 📁 Refactors
+
+- 🐍 Delayed `from packaging.version import Version` import until after venv setup to ensure compatibility
+- 🔐 UI module (`pikaraoke_ui.py`) now copied to `~` for better maintainability
+- 🔁 Renamed autostart script to `autostart_pikaraoke.py` for consistency
+
+### 📝 Notes
+
+- This version sets the foundation for future automatic update and version tracking behavior at startup.
+
 ## [0.3.1] - 2024-07-18
 
 ### 🎨 UI Enhancements
