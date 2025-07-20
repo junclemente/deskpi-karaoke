@@ -34,12 +34,16 @@ def is_raspberry_pi():
 
 def get_version():
     try:
-        version_file = Path("VERSION")
-        if version_file.exists():
-            return version_file.read_text().strip()
+        return (
+            subprocess.check_output(
+                ["git", "describe", "--tags", "--abbrev=0"],  # Only the last tag
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
     except Exception:
-        pass
-    return "unknown"
+        return "unknown"
 
 
 # --- Install Tasks ---
@@ -89,12 +93,19 @@ def setup_virtualenv():
 
 def install_start_script():
     print("🎬 Copying start script from assets...")
-    src = Path(__file__).parent / "assets" / "pikaraoke_start.py"
-    dst = Path.home() / "pikaraoke_start.py"
+    src = Path(__file__).parent / "assets" / "autostart_pikaraoke.py"
+    dst = Path.home() / "autostart_pikaraoke.py"
     shutil.copy(src, dst)
     dst.chmod(0o755)
 
 
+def install_ui_module():
+    print("📁 Copying PiKaraoke UI module...")
+    src = Path(__file__).parent / "assets" / "pikaraoke_ui.py"
+    dst = Path.home() / "pikaraoke_ui.py"
+    shutil.copy(src, dst)
+    dst.chmod(0o644)
+    print(f"✅ UI module installed at: {dst}")
 
 
 # --- Main Entry Point ---
@@ -115,11 +126,12 @@ def main():
     setup_virtualenv()
     install_start_script()
     install_autostart_entry()
+    install_ui_module()
+    # install_desktop_launcher()
 
-    print(
-        "\n✅ Installation complete! You can launch PiKaraoke from the desktop or by running:"
-    )
-    print("   python3 ~/pikaraoke_start.py\n")
+    print("\n✅ Installation complete! System will automatically reboot.")
+    print("🔄 Rebooting...")
+    subprocess.run(["sudo", "reboot"])
 
 
 def install_autostart_entry():
@@ -127,13 +139,32 @@ def install_autostart_entry():
     autostart_dir = Path.home() / ".config" / "autostart"
     autostart_dir.mkdir(parents=True, exist_ok=True)
 
-    src = Path(__file__).parent / "assets" / "pikaraoke.desktop"
+    src = Path(__file__).parent / "assets" / "autostart_pikaraoke.desktop"
     dst = autostart_dir / "pikaraoke.desktop"
     shutil.copy(src, dst)
     dst.chmod(0o755)
 
     print(f"✅ Autostart file created at: {dst}")
 
+
+# def install_desktop_launcher():
+#     print("📎 Installing desktop launcher...")
+#     desktop_path = Path.home() / "Desktop"
+#     desktop_path.mkdir(parents=True, exist_ok=True)
+
+#     src = Path(__file__).parent / "assets" / "launch_pikaraoke.desktop"
+#     dst = desktop_path / "Start PiKaraoke.desktop"
+#     shutil.copy(src, dst)
+#     dst.chmod(0o755)
+
+#     try:
+#         subprocess.run(
+#             ["gio", "set", str(dst), "metadata::trusted", "true"], check=False
+#         )
+#     except Exception as e:
+#         print(f"⚠️ Could not mark launcher as trusted: {e}")
+
+#     print(f"✅ Desktop launcher created at: {dst}")
 
 
 if __name__ == "__main__":

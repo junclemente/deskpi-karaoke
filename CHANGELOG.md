@@ -2,7 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v0.3.0] - 2024-07-XX
+## [0.3.1] - 2024-07-18
+
+### 🎨 UI Enhancements
+
+- Replaced Zenity popups with native Tkinter windows
+- Info and error messages now appear at a consistent screen location
+- Notifications auto-close and are non-blocking
+
+### ⚙️ Autostart Behavior
+
+- Improved internet detection logic
+  - Polls silently for 10 seconds before showing UI
+  - If no connection, notifies user and continues checking for up to 40s
+- Launches PiKaraoke immediately on detection
+- Graceful error message if connection fails
+
+### 📁 Script & File Updates
+
+- Renamed `pikaraoke_start.py` → `autostart_pikaraoke.py`
+- Removed `desktop_pikaraoke_start.py` (no longer used)
+- Added shared `pikaraoke_ui.py` for popups
+- `.desktop` files updated to use new naming
+
+### 🐍 System Requirements
+
+- Assumes Python ≥ 3.9 (via Raspberry Pi OS Bookworm)
+
+## [v0.3.0] - 2024-07-18
 
 ### 🎉 Major Features
 
