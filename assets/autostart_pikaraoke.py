@@ -5,9 +5,10 @@ import time
 import socket
 import os
 
+from packaging.version import Version
+from pikaraoke_ui import show_error, show_info
 from pathlib import Path
 
-from pikaraoke_ui import show_error, show_info
 
 CHECK_INTERVAL = 5
 INITIAL_WAIT = 10
@@ -34,7 +35,39 @@ def launch_pikaraoke():
         subprocess.Popen([str(venv_bin / "pikaraoke")], stdout=log, stderr=log, env=env)
 
 
+def get_installed_pikaraoke_version():
+    try:
+        output = subprocess.check_output(["pikaraoke", "--version"])
+        return Version(output.decode().strip().lstrip("v"))
+    except Exception:
+        return Version("0.0.0")
+
+
+def get_latest_pikaraoke_version():
+    try:
+        with urllib.request.urlopen("https://pypi.org/pypi/pikaraoke/json") as response:
+            data = json.load(response)
+            return Version(data["info"]["version"])
+    except Exception:
+        return None
+
+
+def mark_for_update():
+    flag_path = Path.home() / ".pikaraoke_update_pending"
+    flag_path.touch()
+    print("🔔 Update flag set. PiKaraoke will update on next launch.")
+
+
 def main():
+    # check for new major.minor version of PiKaraoke
+    installed_version = get_installed_pikaraoke_version()
+    latest_version = get_latest_pikaraoke_version()
+    if latest_version and (installed_version.major, installed_version.minor) < (
+        latest_version.major,
+        latest_version.minor,
+    ):
+        mark_for_update()
+
     # quiet polling - search for internet
     start_time = time.time()
     while (time.time() - start_time) < INITIAL_WAIT:

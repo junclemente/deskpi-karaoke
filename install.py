@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
 
-import os
-import platform
-import subprocess
-import shutil
 import argparse
+import platform
+import shutil
+import site
+import subprocess
+import sys
 
-from packaging.version import Version
 from pathlib import Path
+
+# --- Check Python Version ---
+if sys.version_info < (3, 9):
+    print("❌ Python 3.9+ is required to install PiKaraoke.")
+    print(f"Detected version: {sys.version_info.major}.{sys.version_info.minor}")
+    sys.exit(1)
 
 
 # --- Parse CLI Arguments ---
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Install PiKaraoke on Raspberry Pi 4 (v0.3.0)"
+        description="Install PiKaraoke on Raspberry Pi 4..."
     )
     parser.add_argument(
         "--deskpi",
@@ -35,6 +41,7 @@ def is_raspberry_pi():
 
 
 def get_version():
+    # Attempt to get the latest git tag as the version of the installer project
     try:
         return (
             subprocess.check_output(
@@ -74,6 +81,7 @@ def install_system_packages():
             "chromium-chromedriver",
             "git",
             "python3-venv",
+            "python3-pip",
         ]
     )
 
@@ -91,6 +99,7 @@ def setup_virtualenv():
         run_command(["python3", "-m", "venv", str(venv_path)])
     pip = venv_path / "bin" / "pip"
     run_command([str(pip), "install", "--upgrade", "pip"])
+    run_command([str(pip), "install", "--upgrade", "packaging"])
     run_command([str(pip), "install", "pikaraoke"])
 
 
@@ -114,23 +123,41 @@ def install_ui_module():
 # --- Main Entry Point ---
 def main():
     args = parse_args()
+
+    # Step 1: Set up the virtual environment early so packaging is available
+    setup_virtualenv()
+
+    # ✅ Now it's safe to import Version
+    from packaging.version import Version
+
     version = get_version()
     print(f"\n🎤 PiKaraoke Installer v{version} Starting...\n")
 
+    # Step 2: Clean uninstall if upgrading from older versions
     if Version(version) < Version("0.3.1"):
         print("🧹 Detected install < 0.3.1 — running uninstall_clean.py...")
         subprocess.run(["python3", "uninstall_clean.py"], check=True)
 
-    check_platform()
+    # Step 3: Check for autoupdate flag
+    update_flag = Path.home() / ".pikaraoke_update_pending"
+    if update_flag.exists():
+        print("🔔 Update flag detected - upgrading PiKaraoke...")
+        update_flag.unlink()
+        venv_bin = Path.home() / ".venv-pikaraoke" / "bin"
+        pip = venv_bin / "pip"
+        run_command([str(pip), "install", "--force-reinstall", "pikaraoke"])
 
+    # Step 4: OS check & system package install
+    check_platform()
     install_system_packages()
 
+    # Step 5: Optional DeskPi drivers
     if args.deskpi:
         install_deskpi_drivers()
     else:
         print("💡 DeskPi driver install skipped (use --deskpi to enable)")
 
-    setup_virtualenv()
+    # Step 6: Final setup steps
     install_start_script()
     install_autostart_entry()
     install_ui_module()
