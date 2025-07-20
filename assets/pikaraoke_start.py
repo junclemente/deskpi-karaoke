@@ -7,7 +7,7 @@ import os
 
 from pathlib import Path
 
-from assets.pikaraoke_ui import show_error, show_info
+from pikaraoke_ui import show_error, show_info
 
 CHECK_INTERVAL = 5
 MAX_WAIT = 30
