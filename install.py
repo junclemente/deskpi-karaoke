@@ -93,8 +93,8 @@ def setup_virtualenv():
 
 def install_start_script():
     print("🎬 Copying start script from assets...")
-    src = Path(__file__).parent / "assets" / "pikaraoke_start.py"
-    dst = Path.home() / "pikaraoke_start.py"
+    src = Path(__file__).parent / "assets" / "autostart_pikaraoke.py"
+    dst = Path.home() / "autostart_pikaraoke.py"
     shutil.copy(src, dst)
     dst.chmod(0o755)
 
