@@ -15,14 +15,12 @@ if sys.version_info < (3, 9):
     sys.exit(1)
 
 # --- Check for packaging module; install if missing ---
-try: 
-    from packaging.version import Version 
-except ImportError: 
+try:
+    from packaging.version import Version
+except ImportError:
     print("❌ 'packaging' module not found. Installing now...")
     subprocess.run(["pip3", "install", "--upgrade", "packaging"], check=True)
-    from packaging.version import Version   
-
-
+    from packaging.version import Version
 
 
 # --- Parse CLI Arguments ---
@@ -89,12 +87,12 @@ def install_system_packages():
             "chromium-chromedriver",
             "git",
             "python3-venv",
-            "python3-pip"
+            "python3-pip",
         ]
     )
 
     # install packaging module for version handling
-    run_command(["python3", "-m", "pip", "install", "--upgrade", "packaging"]
+    run_command(["python3", "-m", "pip", "install", "--upgrade", "packaging"])
 
 
 def install_deskpi_drivers():
