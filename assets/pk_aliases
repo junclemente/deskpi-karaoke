@@ -1,34 +1,47 @@
-# ~/.pk_aliases - PiKaraoke user commands (installer-focused)
-
-export PK_HOME="$HOME/deskpi-karaoke"   # your installer repo
-export PK_VENV="$HOME/.venv"
-export PK_LOG="$HOME/pikaraoke_output.log"
-
 pk() {
   case "$1" in
     update)
-        echo "📥 Updating PiKaraoke *installer*..."
-        cd "$PK_HOME" || { echo "❌ Installer repo not found at $PK_HOME"; return 1; }
-        git pull --ff-only || { echo "❌ Git update failed"; return 1; }
-        echo "▶️ Applying installer updates..."
-        python3 install.py || { echo "❌ Installer update failed"; return 1; }
-        echo "♻️ Rebooting to let PiKaraoke self-check run on boot..."
-        sudo reboot
-        ;;
+      echo "📥 Updating PiKaraoke *installer* (default branch)..."
+      cd "$PK_HOME" || { echo "❌ Installer repo not found at $PK_HOME"; return 1; }
+      git pull --ff-only || { echo "❌ Git update failed"; return 1; }
+      echo "▶️ Applying installer updates..."
+      python3 install.py || { echo "❌ Installer update failed"; return 1; }
+      echo "♻️ Rebooting to let PiKaraoke self-check run on boot..."
+      sudo reboot
+      ;;
+    devupdate|dev)
+      echo "🛠 Updating PiKaraoke *installer* (dev branch)..."
+      cd "$PK_HOME" || { echo "❌ Installer repo not found at $PK_HOME"; return 1; }
+      git checkout dev || { echo "❌ Could not switch to dev branch"; return 1; }
+      git pull origin dev --ff-only || { echo "❌ Git update failed"; return 1; }
+      echo "▶️ Applying installer updates from dev..."
+      python3 install.py || { echo "❌ Installer update failed"; return 1; }
+      echo "♻️ Rebooting to let PiKaraoke self-check run on boot..."
+      sudo reboot
+      ;;
     start)
-        echo "🎤 Starting PiKaraoke..."
-        # If your app requires the venv to run, keep this; otherwise it’s harmless.
-        source "$PK_VENV/bin/activate" 2>/dev/null || true
-        nohup pikaraoke > "$PK_LOG" 2>&1 &
-        echo "ℹ️ Running in background (log: $PK_LOG)"
-        ;;
+      echo "🎤 Starting PiKaraoke..."
+      if [ -x "$PK_VENV/bin/pikaraoke" ]; then
+        CMD="$PK_VENV/bin/pikaraoke"
+      elif command -v pikaraoke >/dev/null 2>&1; then
+        CMD="pikaraoke"
+      elif [ -x "$PK_VENV/bin/python" ]; then
+        CMD="$PK_VENV/bin/python -m pikaraoke"
+      else
+        CMD="python3 -m pikaraoke"
+      fi
+      nohup bash -lc "$CMD" > "$PK_LOG" 2>&1 &
+      disown
+      echo "ℹ️ Running in background (log: $PK_LOG)"
+      ;;
     help|*|"")
-        echo ""
-        echo "📌 PiKaraoke Commands:"
-        echo "   pk update  → Update the *installer* and reboot (PiKaraoke itself updates on next boot)"
-        echo "   pk start   → Start PiKaraoke manually (if you exited the app)"
-        echo "   pk help    → Show this help message"
-        echo ""
-        ;;
+      echo ""
+      echo "📌 PiKaraoke Commands:"
+      echo "   pk update     → Update installer from default branch & reboot"
+      echo "   pk devupdate  → Update installer from dev branch & reboot"
+      echo "   pk start      → Start PiKaraoke manually"
+      echo "   pk help       → Show this help message"
+      echo ""
+      ;;
   esac
 }
