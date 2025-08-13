@@ -9,6 +9,27 @@ import sys
 
 from pathlib import Path
 
+REPO_DIR = Path(__file__).parent.resolve()
+UNINSTALLER = REPO_DIR / "uninstall.py"
+
+
+def get_current_branch(repo_dir: Path) -> str | None:
+    """Return current git branch, or None if not a git checkout."""
+    try:
+        out = (
+            subprocess.check_output(
+                ["git", "-C", str(repo_dir), "rev-parse", "--abbrev-ref", "HEAD"],
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
+        # 'HEAD' can appear when detached; treat as not-dev
+        return out if out and out != "HEAD" else None
+    except Exception:
+        return None
+
+
 # --- Check Python Version ---
 if sys.version_info < (3, 9):
     print("❌ Python 3.9+ is required to install PiKaraoke.")
@@ -87,7 +108,6 @@ def install_system_packages():
         run_command(["sudo", "apt-get", "install", "-y", "chromium"] + packages)
 
 
-
 def install_deskpi_drivers():
     print("🛠️ Installing DeskPi Lite 4 drivers...")
     run_command(["git", "clone", "https://github.com/DeskPi-Team/deskpi_v1.git"])
@@ -135,6 +155,18 @@ def main():
     version = get_version()
     print(f"\n🎤 PiKaraoke Installer v{version} Starting...\n")
 
+    # Step 1.5: Check if using dev branch 
+    branch = get_current_branch(REPO_DIR)
+    if branch == "dev":
+        print("🧪 Dev branch detected — skipping legacy uninstall step.")
+    else:
+        # Only run for real, tagged versions below 0.3.1
+        if version != "dev" and Version(version) < Version("0.3.1"):
+            if UNINSTALLER.exists():
+                print(f"🧹 Detected < 0.3.1 — running {UNINSTALLER.name}...")
+                subprocess.run(["python3", str(UNINSTALLER)], check=True, cwd=str(REPO_DIR))
+            else:
+                print(f"🧹 Detected < 0.3.1 but {UNINSTALLER.name} not found — skipping.")
     # Step 2: Clean uninstall if upgrading from older versions
     if Version(version) < Version("0.3.1"):
         print("🧹 Detected install < 0.3.1 — running uninstall_clean.py...")
@@ -181,6 +213,7 @@ def install_autostart_entry():
     dst.chmod(0o755)
 
     print(f"✅ Autostart file created at: {dst}")
+
 
 def install_pk_aliases():
     """Copy assets/pk_aliases to ~/.pk_aliases and ensure it's sourced."""
