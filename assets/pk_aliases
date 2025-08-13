@@ -1,34 +1,56 @@
-# ~/.pk_aliases - PiKaraoke user commands (installer-focused)
+# Paths for the installer repo
+export PK_HOME="${PK_HOME:-$HOME/deskpi-karaoke}"  # cloned git repo
+export PK_REMOTE="${PK_REMOTE:-https://github.com/junclemente/deskpi-karaoke.git}"
 
-export PK_HOME="$HOME/deskpi-karaoke"   # your installer repo
-export PK_VENV="$HOME/.venv"
-export PK_LOG="$HOME/pikaraoke_output.log"
+# Runtime bits
+export PK_VENV="$PK_HOME/.venv-pikaraoke"  # venv inside repo
+export PK_LOG="$PK_HOME/pikaraoke_output.log"
 
 pk() {
   case "$1" in
     update)
-        echo "📥 Updating PiKaraoke *installer*..."
-        cd "$PK_HOME" || { echo "❌ Installer repo not found at $PK_HOME"; return 1; }
-        git pull --ff-only || { echo "❌ Git update failed"; return 1; }
-        echo "▶️ Applying installer updates..."
-        python3 install.py || { echo "❌ Installer update failed"; return 1; }
-        echo "♻️ Rebooting to let PiKaraoke self-check run on boot..."
-        sudo reboot
-        ;;
-    start)
-        echo "🎤 Starting PiKaraoke..."
-        # If your app requires the venv to run, keep this; otherwise it’s harmless.
-        source "$PK_VENV/bin/activate" 2>/dev/null || true
-        nohup pikaraoke > "$PK_LOG" 2>&1 &
-        echo "ℹ️ Running in background (log: $PK_LOG)"
-        ;;
+      echo "📥 Updating PiKaraoke *installer* (default branch)..."
+      if [ ! -d "$PK_HOME/.git" ]; then
+        echo "ℹ️ $PK_HOME is not a git repo. Cloning fresh..."
+        rm -rf "$PK_HOME" && git clone "$PK_REMOTE" "$PK_HOME" || { echo "❌ Clone failed"; return 1; }
+      fi
+      git -C "$PK_HOME" pull --ff-only || { echo "❌ Git update failed"; return 1; }
+      echo "▶️ Applying installer updates..."
+      python3 "$PK_HOME/install.py" || { echo "❌ Installer update failed"; return 1; }
+      echo "♻️ Rebooting to let PiKaraoke self-check run on boot..."
+      sudo reboot
+      ;;
+
+    devupdate|dev)
+      echo "🛠 Updating PiKaraoke *installer* (dev branch)..."
+      if [ ! -d "$PK_HOME/.git" ]; then
+        echo "ℹ️ $PK_HOME is not a git repo. Cloning fresh..."
+        rm -rf "$PK_HOME" && git clone "$PK_REMOTE" "$PK_HOME" || { echo "❌ Clone failed"; return 1; }
+      fi
+      git -C "$PK_HOME" fetch --prune || { echo "❌ git fetch failed"; return 1; }
+      git -C "$PK_HOME" rev-parse --verify dev >/dev/null 2>&1 \
+        || git -C "$PK_HOME" checkout -t origin/dev || true
+      git -C "$PK_HOME" checkout dev || { echo "❌ Could not switch to dev branch"; return 1; }
+      git -C "$PK_HOME" pull --ff-only origin dev || { echo "❌ Git update failed"; return 1; }
+      echo "▶️ Applying installer updates from dev..."
+      python3 "$PK_HOME/install.py" || { echo "❌ Installer update failed"; return 1; }
+      echo "♻️ Rebooting to let PiKaraoke self-check run on boot..."
+      sudo reboot
+      ;;
+
+    reboot)
+      echo "♻️ Rebooting Raspberry Pi..."
+      sudo reboot
+      ;;
+
     help|*|"")
-        echo ""
-        echo "📌 PiKaraoke Commands:"
-        echo "   pk update  → Update the *installer* and reboot (PiKaraoke itself updates on next boot)"
-        echo "   pk start   → Start PiKaraoke manually (if you exited the app)"
-        echo "   pk help    → Show this help message"
-        echo ""
-        ;;
+      echo ""
+      echo "📌 PiKaraoke Commands:"
+      echo "   pk update     → Update installer (default branch) & reboot"
+      echo "   pk devupdate  → Update installer (dev branch) & reboot"
+      echo "   pk reboot     → Reboot the Raspberry Pi"
+      echo "   pk help       → Show this help message"
+      echo ""
+      ;;
   esac
 }

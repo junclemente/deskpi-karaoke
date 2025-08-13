@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+[v0.3.3] - 2024-08-12
+🚀 New Features
+🖥️ pk alias command suite for quick terminal access:
+
+pk update – update installer from main branch & reboot
+
+pk devupdate – update installer from dev branch & reboot
+
+pk reboot – reboot the Raspberry Pi
+
+pk help – list available commands
+
+🪄 Automatic .pk_aliases install – now added and sourced in .bashrc/.zshrc during install
+
+🛠️ Improvements
+🧪 Dev branch detection – skips legacy uninstall step to prevent missing file errors
+
+📂 Uninstall path fix – now correctly references uninstall.py using absolute path
+
+📦 Dependency handling:
+
+Ensure yt-dlp is installed in PiKaraoke venv to fix download/playback issues
+
+Added Chromium package fallback (chromium-browser → chromium) for compatibility
+
+🧹 Consolidated uninstall logic into a single clean block
+
+🔍 Improved get_version() to differentiate between dev branch and tagged releases
+
+📝 Notes
+This release focuses on ease of updates and stability for dev builds
+
+Recommended for all users, especially those running on the dev branch or updating from older versions
 [0.3.2] - 2024-07-18
 
 ## 📦 Version-Aware Installer + Auto-Updater
