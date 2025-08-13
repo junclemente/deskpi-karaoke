@@ -1,16 +1,15 @@
 # Paths for the installer repo
-export PK_HOME="${PK_HOME:-$HOME/deskpi-karaoke}"
+export PK_HOME="${PK_HOME:-$HOME/deskpi-karaoke}"  # cloned git repo
 export PK_REMOTE="${PK_REMOTE:-https://github.com/junclemente/deskpi-karaoke.git}"
 
 # Runtime bits
-export PK_VENV="${PK_VENV:-$HOME/.venv-pikaraoke}"
-export PK_LOG="${PK_LOG:-$HOME/pikaraoke_output.log}"
+export PK_VENV="$PK_HOME/.venv-pikaraoke"  # venv inside repo
+export PK_LOG="$PK_HOME/pikaraoke_output.log"
 
 pk() {
   case "$1" in
     update)
       echo "📥 Updating PiKaraoke *installer* (default branch)..."
-      # ensure repo exists and is a git repo
       if [ ! -d "$PK_HOME/.git" ]; then
         echo "ℹ️ $PK_HOME is not a git repo. Cloning fresh..."
         rm -rf "$PK_HOME" && git clone "$PK_REMOTE" "$PK_HOME" || { echo "❌ Clone failed"; return 1; }
@@ -29,7 +28,6 @@ pk() {
         rm -rf "$PK_HOME" && git clone "$PK_REMOTE" "$PK_HOME" || { echo "❌ Clone failed"; return 1; }
       fi
       git -C "$PK_HOME" fetch --prune || { echo "❌ git fetch failed"; return 1; }
-      # checkout dev (create tracking branch if needed)
       git -C "$PK_HOME" rev-parse --verify dev >/dev/null 2>&1 \
         || git -C "$PK_HOME" checkout -t origin/dev || true
       git -C "$PK_HOME" checkout dev || { echo "❌ Could not switch to dev branch"; return 1; }
@@ -40,40 +38,17 @@ pk() {
       sudo reboot
       ;;
 
-    start)
-      echo "🎤 Starting PiKaraoke..."
-
-      # Activate venv so PATH includes venv/bin (needed for yt-dlp)
-      if [ -d "$PK_VENV" ]; then
-        . "$PK_VENV/bin/activate"
-      fi
-
-      # Resolve command after activation
-      if command -v pikaraoke >/dev/null 2>&1; then
-        CMD="pikaraoke"
-      elif [ -x "$PK_VENV/bin/python" ]; then
-        CMD="$PK_VENV/bin/python -m pikaraoke"
-      else
-        CMD="python3 -m pikaraoke"
-      fi
-
-      # Just in case PATH isn't set, prepend venv/bin
-      export PATH="$PK_VENV/bin:$PATH"
-      [ -z "$DISPLAY" ] && export DISPLAY=":0"
-
-      echo "→ launching: $CMD"
-      nohup bash -lc "$CMD" > "$PK_LOG" 2>&1 &
-      disown
-      echo "ℹ️ Running in background (log: $PK_LOG)"
+    reboot)
+      echo "♻️ Rebooting Raspberry Pi..."
+      sudo reboot
       ;;
-
 
     help|*|"")
       echo ""
       echo "📌 PiKaraoke Commands:"
       echo "   pk update     → Update installer (default branch) & reboot"
       echo "   pk devupdate  → Update installer (dev branch) & reboot"
-      echo "   pk start      → Start PiKaraoke manually"
+      echo "   pk reboot     → Reboot the Raspberry Pi"
       echo "   pk help       → Show this help message"
       echo ""
       ;;
