@@ -1,0 +1,34 @@
+# ~/.pk_aliases - PiKaraoke user commands (installer-focused)
+
+export PK_HOME="$HOME/deskpi-karaoke"   # your installer repo
+export PK_VENV="$HOME/.venv"
+export PK_LOG="$HOME/pikaraoke_output.log"
+
+pk() {
+  case "$1" in
+    update)
+        echo "📥 Updating PiKaraoke *installer*..."
+        cd "$PK_HOME" || { echo "❌ Installer repo not found at $PK_HOME"; return 1; }
+        git pull --ff-only || { echo "❌ Git update failed"; return 1; }
+        echo "▶️ Applying installer updates..."
+        python3 install.py || { echo "❌ Installer update failed"; return 1; }
+        echo "♻️ Rebooting to let PiKaraoke self-check run on boot..."
+        sudo reboot
+        ;;
+    start)
+        echo "🎤 Starting PiKaraoke..."
+        # If your app requires the venv to run, keep this; otherwise it’s harmless.
+        source "$PK_VENV/bin/activate" 2>/dev/null || true
+        nohup pikaraoke > "$PK_LOG" 2>&1 &
+        echo "ℹ️ Running in background (log: $PK_LOG)"
+        ;;
+    help|*|"")
+        echo ""
+        echo "📌 PiKaraoke Commands:"
+        echo "   pk update  → Update the *installer* and reboot (PiKaraoke itself updates on next boot)"
+        echo "   pk start   → Start PiKaraoke manually (if you exited the app)"
+        echo "   pk help    → Show this help message"
+        echo ""
+        ;;
+  esac
+}

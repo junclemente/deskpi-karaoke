@@ -70,20 +70,22 @@ def check_platform():
 def install_system_packages():
     print("📦 Installing system packages...")
     run_command(["sudo", "apt-get", "update"])
-    run_command(
-        [
-            "sudo",
-            "apt-get",
-            "install",
-            "-y",
-            "ffmpeg",
-            "chromium-browser",
-            "chromium-chromedriver",
-            "git",
-            "python3-venv",
-            "python3-pip",
-        ]
-    )
+
+    packages = [
+        "ffmpeg",
+        "chromium-chromedriver",
+        "git",
+        "python3-venv",
+        "python3-pip",
+    ]
+
+    # Try chromium-browser first, then chromium if not found
+    try:
+        run_command(["sudo", "apt-get", "install", "-y", "chromium-browser"] + packages)
+    except subprocess.CalledProcessError:
+        print("⚠️  'chromium-browser' not found, trying 'chromium'...")
+        run_command(["sudo", "apt-get", "install", "-y", "chromium"] + packages)
+
 
 
 def install_deskpi_drivers():
@@ -161,6 +163,7 @@ def main():
     install_start_script()
     install_autostart_entry()
     install_ui_module()
+    install_pk_aliases()
 
     print("\n✅ Installation complete! System will automatically reboot.")
     print("🔄 Rebooting...")
@@ -178,6 +181,26 @@ def install_autostart_entry():
     dst.chmod(0o755)
 
     print(f"✅ Autostart file created at: {dst}")
+
+def install_pk_aliases():
+    """Copy assets/pk_aliases to ~/.pk_aliases and ensure it's sourced."""
+    home = Path.home()
+    pk_src = Path(__file__).parent / "assets" / "pk_aliases"
+    pk_dst = home / ".pk_aliases"
+
+    # Copy file
+    shutil.copy(pk_src, pk_dst)
+
+    # Ensure it's sourced in shell configs
+    src_line = '[ -f "$HOME/.pk_aliases" ] && . "$HOME/.pk_aliases"'
+    for rc in (home / ".bashrc", home / ".zshrc"):
+        if rc.exists():
+            text = rc.read_text(encoding="utf-8")
+            if ".pk_aliases" not in text:
+                rc.write_text(text.rstrip() + "\n" + src_line + "\n", encoding="utf-8")
+
+    print(f"✅ Installed pk aliases from assets at: {pk_dst}")
+    print("ℹ️ New terminals will load 'pk'; to use now, run: source ~/.pk_aliases")
 
 
 if __name__ == "__main__":
