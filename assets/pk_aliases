@@ -42,19 +42,31 @@ pk() {
 
     start)
       echo "🎤 Starting PiKaraoke..."
-      if [ -x "$PK_VENV/bin/pikaraoke" ]; then
-        CMD="$PK_VENV/bin/pikaraoke"
-      elif command -v pikaraoke >/dev/null 2>&1; then
+
+      # Activate venv so PATH includes venv/bin (needed for yt-dlp)
+      if [ -d "$PK_VENV" ]; then
+        . "$PK_VENV/bin/activate"
+      fi
+
+      # Resolve command after activation
+      if command -v pikaraoke >/dev/null 2>&1; then
         CMD="pikaraoke"
       elif [ -x "$PK_VENV/bin/python" ]; then
         CMD="$PK_VENV/bin/python -m pikaraoke"
       else
         CMD="python3 -m pikaraoke"
       fi
+
+      # Just in case PATH isn't set, prepend venv/bin
+      export PATH="$PK_VENV/bin:$PATH"
+      [ -z "$DISPLAY" ] && export DISPLAY=":0"
+
+      echo "→ launching: $CMD"
       nohup bash -lc "$CMD" > "$PK_LOG" 2>&1 &
       disown
       echo "ℹ️ Running in background (log: $PK_LOG)"
       ;;
+
 
     help|*|"")
       echo ""
