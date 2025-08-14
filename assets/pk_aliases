@@ -1,55 +1,107 @@
-# Paths for the installer repo
-export PK_HOME="${PK_HOME:-$HOME/deskpi-karaoke}"  # cloned git repo
-export PK_REMOTE="${PK_REMOTE:-https://github.com/junclemente/deskpi-karaoke.git}"
+# State dir and flags
+export PK_STATE="${PK_STATE:-$HOME/.deskpi-karaoke}"
+export PK_REBOOT_FLAG="$PK_STATE/.reboot_required"
+mkdir -p "$PK_STATE"
 
-# Runtime bits
-export PK_VENV="$PK_HOME/.venv-pikaraoke"  # venv inside repo
-export PK_LOG="$PK_HOME/pikaraoke_output.log"
+# Files to remember what we've applied
+export PK_LAST_SHA_MAIN="$PK_STATE/.last_applied_sha_main"
+export PK_LAST_SHA_DEV="$PK_STATE/.last_applied_sha_dev"
+export PK_VER_FILE="$PK_STATE/VERSION"   # written by installer on main only
+
+_pk_sync_repo_branch() {
+  local branch="$1"
+  if [ ! -d "$PK_HOME/.git" ]; then
+    echo "ℹ️ $PK_HOME is not a git repo. Cloning fresh..."
+    rm -rf "$PK_HOME" && git clone "$PK_REMOTE" "$PK_HOME" || { echo "❌ Clone failed"; return 2; }
+  fi
+
+  git -C "$PK_HOME" fetch --prune --tags || { echo "❌ git fetch failed"; return 2; }
+  git -C "$PK_HOME" checkout "$branch" >/dev/null 2>&1 || \
+    git -C "$PK_HOME" checkout -t "origin/$branch" || { echo "❌ Could not checkout $branch"; return 2; }
+
+  local remote_sha local_sha
+  remote_sha="$(git -C "$PK_HOME" rev-parse "origin/$branch" || echo "")"
+  [ -z "$remote_sha" ] && { echo "❌ Could not resolve origin/$branch"; return 2; }
+
+  # Fast-forward if behind
+  local_sha="$(git -C "$PK_HOME" rev-parse HEAD || echo "")"
+  if [ "$local_sha" != "$remote_sha" ]; then
+    git -C "$PK_HOME" merge --ff-only "$remote_sha" || { echo "❌ FF merge failed"; return 2; }
+    echo "⬆️  Updated $branch → $(git -C "$PK_HOME" rev-parse HEAD)"
+    return 1   # changed
+  fi
+
+  echo "✅ Repo already at $branch @ $remote_sha"
+  return 0     # no change
+}
+
+_pk_run_installer_then_maybe_reboot() {
+  echo "▶️ Running installer…"
+  python3 "$PK_HOME/install.py" || { echo "❌ Installer update failed"; return 3; }
+  if [ -f "$PK_REBOOT_FLAG" ]; then
+    echo "♻️ Reboot requested by installer. Rebooting…"
+    rm -f "$PK_REBOOT_FLAG"
+    sudo reboot
+  else
+    echo "✅ Installer completed. No reboot requested."
+  fi
+}
 
 pk() {
   case "$1" in
     update)
-      echo "📥 Updating PiKaraoke *installer* (default branch)..."
-      if [ ! -d "$PK_HOME/.git" ]; then
-        echo "ℹ️ $PK_HOME is not a git repo. Cloning fresh..."
-        rm -rf "$PK_HOME" && git clone "$PK_REMOTE" "$PK_HOME" || { echo "❌ Clone failed"; return 1; }
+      echo "📥 Updating *main*…"
+      _pk_sync_repo_branch "main"; rc=$?
+      [ $rc -eq 2 ] && return 1
+
+      # main: version gate — skip if VERSION unchanged
+      # (Your installer should write $PK_VER_FILE after successful install)
+      latest_tag="$(git -C "$PK_HOME" tag --sort=-v:refname | head -n1 | sed 's/^v//;s/^V//')"
+      recorded_ver="$( [ -f "$PK_VER_FILE" ] && cat "$PK_VER_FILE" || echo "" )"
+
+      if [ $rc -eq 0 ] && [ -n "$latest_tag" ] && [ "$recorded_ver" = "$latest_tag" ]; then
+        echo "✅ Already on main v$recorded_ver. Nothing to do."
+        return 0
       fi
-      git -C "$PK_HOME" pull --ff-only || { echo "❌ Git update failed"; return 1; }
-      echo "▶️ Applying installer updates..."
-      python3 "$PK_HOME/install.py" || { echo "❌ Installer update failed"; return 1; }
-      echo "♻️ Rebooting to let PiKaraoke self-check run on boot..."
-      sudo reboot
+
+      _pk_run_installer_then_maybe_reboot || return $?
+      # If successful, remember the tag (installer can also do this)
+      [ -n "$latest_tag" ] && echo "$latest_tag" > "$PK_VER_FILE"
       ;;
 
-    devupdate|dev)
-      echo "🛠 Updating PiKaraoke *installer* (dev branch)..."
-      if [ ! -d "$PK_HOME/.git" ]; then
-        echo "ℹ️ $PK_HOME is not a git repo. Cloning fresh..."
-        rm -rf "$PK_HOME" && git clone "$PK_REMOTE" "$PK_HOME" || { echo "❌ Clone failed"; return 1; }
+    dev|devupdate)
+      echo "🛠 Updating *dev*…"
+      _pk_sync_repo_branch "dev"; rc=$?
+      [ $rc -eq 2 ] && return 1
+
+      # dev: commit SHA gate — only run if origin/dev moved since last apply
+      current_dev_sha="$(git -C "$PK_HOME" rev-parse origin/dev)"
+      last_applied_sha="$( [ -f "$PK_LAST_SHA_DEV" ] && cat "$PK_LAST_SHA_DEV" || echo "" )"
+
+      if [ $rc -eq 0 ] && [ "$current_dev_sha" = "$last_applied_sha" ] && [ -n "$current_dev_sha" ]; then
+        echo "✅ Dev up to date (applied @ $current_dev_sha). Skipping."
+        return 0
       fi
-      git -C "$PK_HOME" fetch --prune || { echo "❌ git fetch failed"; return 1; }
-      git -C "$PK_HOME" rev-parse --verify dev >/dev/null 2>&1 \
-        || git -C "$PK_HOME" checkout -t origin/dev || true
-      git -C "$PK_HOME" checkout dev || { echo "❌ Could not switch to dev branch"; return 1; }
-      git -C "$PK_HOME" pull --ff-only origin dev || { echo "❌ Git update failed"; return 1; }
-      echo "▶️ Applying installer updates from dev..."
-      python3 "$PK_HOME/install.py" || { echo "❌ Installer update failed"; return 1; }
-      echo "♻️ Rebooting to let PiKaraoke self-check run on boot..."
-      sudo reboot
+
+      _pk_run_installer_then_maybe_reboot || return $?
+      echo "$current_dev_sha" > "$PK_LAST_SHA_DEV"
       ;;
 
-    reboot)
-      echo "♻️ Rebooting Raspberry Pi..."
-      sudo reboot
+    version)
+      [ -f "$PK_VER_FILE" ] && echo "📄 Installed (recorded main): v$(cat "$PK_VER_FILE")" || echo "📄 Installed (recorded main): unknown"
+      echo "🏷️ Latest tag: $(git -C "$PK_HOME" fetch --tags >/dev/null 2>&1; git -C "$PK_HOME" tag --sort=-v:refname | head -n1)"
+      echo "🔧 Last applied dev SHA: $( [ -f "$PK_LAST_SHA_DEV" ] && cat "$PK_LAST_SHA_DEV" || echo 'unknown')"
       ;;
 
+    reboot) echo "♻️ Rebooting Raspberry Pi…"; sudo reboot ;;
     help|*|"")
       echo ""
       echo "📌 PiKaraoke Commands:"
-      echo "   pk update     → Update installer (default branch) & reboot"
-      echo "   pk devupdate  → Update installer (dev branch) & reboot"
-      echo "   pk reboot     → Reboot the Raspberry Pi"
-      echo "   pk help       → Show this help message"
+      echo "   pk update      → Update from main; run only if new version/tag or repo changed"
+      echo "   pk devupdate   → Update from dev; run only if origin/dev moved (SHA changed)"
+      echo "   pk version     → Show recorded main version, latest tag, and last applied dev SHA"
+      echo "   pk reboot      → Reboot the Raspberry Pi"
+      echo "   pk help        → Show this help message"
       echo ""
       ;;
   esac
