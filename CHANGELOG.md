@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+
+## [v0.3.4] 2024-08-13
+
+### 🚀 New Features
+- **Main branch version check**
+  - Installer now runs only if the recorded installed version differs from the latest Git tag.
+  - Version recorded in `~/.deskpi-karaoke/VERSION` after a successful main install.
+  - Skips redundant installs/reboots when repo and version are unchanged.
+
+- **Dev branch SHA check**
+  - Removed version check for dev (since it changes frequently without formal version bumps).
+  - Installer now runs only if `origin/dev` has new commits since last applied.
+  - Tracks applied commit SHA in `~/.deskpi-karaoke/.last_applied_sha_dev`.
+
+### 🛠 Improvements
+- Unified branch sync logic with `_pk_sync_repo_branch`.
+- Fast-forward only pulls to prevent unintended merges.
+- Added `pk version` command:
+  - Shows installed main version (from `VERSION` file)
+  - Shows latest Git tag
+  - Shows last applied dev SHA
+- Optional reboot triggered only when `.reboot_required` exists (created by installer).
+
+### ✅ Testing
+- **Main branch**
+  - No changes → installer skipped.
+  - New tag → installer runs, updates `VERSION`.
+- **Dev branch**
+  - No new commits → installer skipped.
+  - New commit → installer runs, updates `.last_applied_sha_dev`.
+- Verified installer-triggered reboot works as expected.
+
+### 📌 Next Steps
+- Ensure `install.py` writes to `VERSION` on main installs.
+- Ensure installer writes `.reboot_required` when reboot is necessary.
+- Optional: add `pk forceupdate` to bypass gating for troubleshooting.
+
 [v0.3.3] - 2024-08-12
 🚀 New Features
 🖥️ pk alias command suite for quick terminal access:
