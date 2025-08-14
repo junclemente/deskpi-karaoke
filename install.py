@@ -8,6 +8,9 @@ import sys
 from pathlib import Path
 
 # --- Paths / Constants ---
+STATE = Path.home() / ".deskpi-karaoke"
+STATE.mkdir(parents=True, exist_ok=True)
+(STATE / "VERSION").write_text("0.3.3\n")
 REPO_DIR = Path(__file__).parent.resolve()
 UNINSTALLER = REPO_DIR / "uninstall.py"  # legacy uninstaller (repo root)
 
