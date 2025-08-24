@@ -1,238 +1,245 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-import argparse
+"""
+PiKaraoke Installer (dev branch)
+- Idempotent
+- Creates ~/.venv-pikaraoke
+- Installs core packages (pikaraoke, packaging, yt-dlp)
+- Copies autostart + UI helpers
+- Installs pk_aliases and sources in shell rc files
+- Records installer state under ~/.deskpi-karaoke
+"""
+
+import os
 import platform
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
-# --- Paths / Constants ---
-STATE = Path.home() / ".deskpi-karaoke"
-STATE.mkdir(parents=True, exist_ok=True)
-(STATE / "VERSION").write_text("0.3.3\n")
-REPO_DIR = Path(__file__).parent.resolve()
-UNINSTALLER = REPO_DIR / "uninstall.py"  # legacy uninstaller (repo root)
+HOME = Path.home()
+STATE_DIR = HOME / ".deskpi-karaoke"
+VENV_DIR = HOME / ".venv-pikaraoke"
+REPO_ROOT = Path(__file__).resolve().parent
+ASSETS_DIR = REPO_ROOT / "assets"
+AUTOSTART_DIR = HOME / ".config" / "autostart"
+DESKTOP_FILE_PATH = AUTOSTART_DIR / "pikaraoke.desktop"
 
-# --- Safety: Python version ---
-if sys.version_info < (3, 9):
-    print("❌ Python 3.9+ is required to install PiKaraoke.")
-    print(f"Detected version: {sys.version_info.major}.{sys.version_info.minor}")
-    sys.exit(1)
+PY_MIN = (3, 9)
+
+PKG_CORE = [
+    "pip>=24.0",
+    "setuptools>=68",
+    "wheel",
+    "packaging>=24.0",
+    "yt-dlp>=2024.7.0",
+    "pikaraoke",  # main app
+]
+
+APT_PKGS = [
+    "python3-venv",
+    "python3-pip",
+    "ffmpeg",
+]
 
 
-# --- Helpers ---
-def run_command(cmd, cwd=None):
-    """Run a shell command and fail loudly."""
-    print(f"▶️  Running: {' '.join(cmd)}")
-    subprocess.run(cmd, check=True, cwd=cwd)
+def print_h(msg: str):
+    print(f"\n=== {msg} ===")
 
 
-def get_current_branch(repo_dir: Path) -> str | None:
-    """Return current git branch, or None if not a git checkout/detached."""
-    try:
-        out = (
-            subprocess.check_output(
-                ["git", "-C", str(repo_dir), "rev-parse", "--abbrev-ref", "HEAD"],
-                stderr=subprocess.DEVNULL,
-            )
-            .decode()
-            .strip()
+def run(cmd, check=True, cwd=None, env=None, capture_output=False, text=True):
+    if isinstance(cmd, str):
+        shell = True
+        return subprocess.run(
+            cmd,
+            check=check,
+            cwd=cwd,
+            env=env,
+            capture_output=capture_output,
+            text=text,
+            shell=True,
         )
-        return out if out and out != "HEAD" else None
-    except Exception:
-        return None
-
-
-def get_version() -> str:
-    """
-    Version strategy:
-      1) Latest Git tag (if repo + tags exist)
-      2) If not on 'main' (or not a git checkout), treat as 'dev'
-    """
-    try:
-        tag = (
-            subprocess.check_output(
-                ["git", "-C", str(REPO_DIR), "describe", "--tags", "--abbrev=0"],
-                stderr=subprocess.DEVNULL,
-            )
-            .decode()
-            .strip()
+    else:
+        return subprocess.run(
+            cmd, check=check, cwd=cwd, env=env, capture_output=capture_output, text=text
         )
-        return tag.lstrip("v")
-    except Exception:
-        pass
-
-    branch = get_current_branch(REPO_DIR)
-    if branch and branch != "main":
-        return "dev"
-    return "dev"
 
 
-def is_raspberry_pi() -> bool:
-    return (
-        "raspberry" in platform.uname().node.lower()
-        or Path("/proc/device-tree/model").exists()
-    )
+def ensure_python_version():
+    if sys.version_info < PY_MIN:
+        raise SystemExit(
+            f"❌ Python {PY_MIN[0]}.{PY_MIN[1]}+ required. Found {sys.version.split()[0]}"
+        )
 
 
 def check_platform():
-    print("🧠 Checking platform...")
-    if not is_raspberry_pi():
-        print("⚠️  Not running on Raspberry Pi. Proceeding anyway...")
-    os_release = Path("/etc/os-release").read_text()
-    if "bookworm" not in os_release.lower():
-        print("⚠️  Warning: You are not running Raspberry Pi OS Bookworm.")
-
-
-def install_system_packages():
-    print("📦 Installing system packages...")
-    run_command(["sudo", "apt-get", "update"])
-
-    base = [
-        "ffmpeg",
-        "chromium-chromedriver",
-        "git",
-        "python3-venv",
-        "python3-pip",
-    ]
-    # Try chromium-browser first, then chromium if not found
+    # Soft checks for Pi + Bookworm Desktop
+    print_h("Checking platform")
+    uname = platform.uname()
     try:
-        run_command(["sudo", "apt-get", "install", "-y", "chromium-browser"] + base)
-    except subprocess.CalledProcessError:
-        print("⚠️  'chromium-browser' not found, trying 'chromium'...")
-        run_command(["sudo", "apt-get", "install", "-y", "chromium"] + base)
+        with open("/etc/os-release") as f:
+            osrel = f.read().lower()
+    except Exception:
+        osrel = ""
+    print(f"System : {uname.system} {uname.release} ({uname.machine})")
+    if "bookworm" not in osrel:
+        print("⚠️  Non-Bookworm OS detected. Proceeding anyway...")
+    if "raspberry" not in (uname.machine.lower() + " " + osrel):
+        print("ℹ️  This does not appear to be a Raspberry Pi. Proceeding anyway...")
 
 
-def install_deskpi_drivers():
-    print("🛠️ Installing DeskPi Lite 4 drivers...")
-    run_command(["git", "clone", "https://github.com/DeskPi-Team/deskpi_v1.git"])
-    run_command(["sudo", "./install.sh"], cwd="deskpi_v1")
-
-
-def setup_virtualenv():
-    print("🐍 Setting up virtual environment...")
-    venv_path = Path.home() / ".venv-pikaraoke"
-    if not venv_path.exists():
-        run_command(["python3", "-m", "venv", str(venv_path)])
-    pip = venv_path / "bin" / "pip"
-    # Keep tools current & ensure yt-dlp + pikaraoke are present
-    run_command([str(pip), "install", "--upgrade", "pip", "setuptools", "wheel"])
-    run_command([str(pip), "install", "--upgrade", "packaging"])
-    run_command([str(pip), "install", "--upgrade", "yt-dlp", "pikaraoke"])
-
-
-def install_start_script():
-    print("🎬 Copying start script from assets...")
-    src = REPO_DIR / "assets" / "autostart_pikaraoke.py"
-    dst = Path.home() / "autostart_pikaraoke.py"
-    shutil.copy(src, dst)
-    dst.chmod(0o755)
-
-
-def install_ui_module():
-    print("📁 Copying PiKaraoke UI module...")
-    src = REPO_DIR / "assets" / "pikaraoke_ui.py"
-    dst = Path.home() / "pikaraoke_ui.py"
-    shutil.copy(src, dst)
-    dst.chmod(0o644)
-    print(f"✅ UI module installed at: {dst}")
-
-
-def install_autostart_entry():
-    print("🔁 Copying autostart entry from assets...")
-    autostart_dir = Path.home() / ".config" / "autostart"
-    autostart_dir.mkdir(parents=True, exist_ok=True)
-    src = REPO_DIR / "assets" / "autostart_pikaraoke.desktop"
-    dst = autostart_dir / "pikaraoke.desktop"
-    shutil.copy(src, dst)
-    dst.chmod(0o755)
-    print(f"✅ Autostart file created at: {dst}")
-
-
-def install_pk_aliases():
-    """Copy assets/pk_aliases to ~/.pk_aliases and ensure it's sourced."""
-    home = Path.home()
-    pk_src = REPO_DIR / "assets" / "pk_aliases"
-    pk_dst = home / ".pk_aliases"
-    shutil.copy(pk_src, pk_dst)
-
-    src_line = '[ -f "$HOME/.pk_aliases" ] && . "$HOME/.pk_aliases"'
-    for rc in (home / ".bashrc", home / ".zshrc"):
-        if rc.exists():
-            text = rc.read_text(encoding="utf-8")
-            if ".pk_aliases" not in text:
-                rc.write_text(text.rstrip() + "\n" + src_line + "\n", encoding="utf-8")
-    print(f"✅ Installed pk aliases from assets at: {pk_dst}")
-    print("ℹ️ New terminals will load 'pk'; to use now, run: source ~/.pk_aliases")
-
-
-# --- CLI ---
-def parse_args():
-    p = argparse.ArgumentParser(description="Install PiKaraoke on Raspberry Pi 4...")
-    p.add_argument(
-        "--deskpi", action="store_true", help="Install DeskPi Lite 4 drivers"
+def apt_install():
+    print_h("Installing system packages (apt)")
+    apt = shutil.which("apt-get") or shutil.which("apt")
+    sudo = shutil.which("sudo")
+    if not apt:
+        print("ℹ️  apt not found (non-Debian system?) Skipping system packages.")
+        return
+    # Update
+    cmd_update = f"{apt} update -y"
+    # Install base pkgs
+    pkgs = " ".join(APT_PKGS)
+    cmd_install = f"{apt} install -y {pkgs}"
+    # Chromium name varies (chromium vs chromium-browser) — try best-effort
+    try_chromium = (
+        f"{apt} install -y chromium || {apt} install -y chromium-browser || true"
     )
-    return p.parse_args()
+    try:
+        if sudo:
+            run(f"{sudo} {cmd_update}", check=False)
+            run(f"{sudo} {cmd_install}", check=False)
+            run(f"{sudo} {try_chromium}", check=False)
+        else:
+            run(cmd_update, check=False)
+            run(cmd_install, check=False)
+            run(try_chromium, check=False)
+    except Exception as e:
+        print(f"⚠️  apt install step had issues: {e}. Continuing...")
 
 
-# --- Main ---
-def main():
-    args = parse_args()
+def ensure_venv():
+    print_h("Ensuring Python venv")
+    if not VENV_DIR.exists():
+        run([sys.executable, "-m", "venv", str(VENV_DIR)])
+    py = VENV_DIR / "bin" / "python"
+    pip = [str(py), "-m", "pip"]
+    run(pip + ["install", "--upgrade"] + PKG_CORE, check=False)
+    return py
 
-    # Step 0: Prepare environment/tools
-    setup_virtualenv()
 
-    # Import here after venv ensures packaging exists
-    from packaging.version import Version
-
-    version = get_version()
-    print(f"\n🎤 PiKaraoke Installer v{version} Starting...\n")
-
-    # Dev branch: skip legacy uninstall
-    branch = get_current_branch(REPO_DIR)
-    if branch == "dev":
-        print("🧪 Dev branch detected — skipping legacy uninstall step.")
-    else:
-        # Only apply legacy uninstall to tagged, old versions
-        if version != "dev" and Version(version) < Version("0.3.1"):
-            if UNINSTALLER.exists():
-                print(f"🧹 Detected < 0.3.1 — running {UNINSTALLER.name}...")
-                run_command(["python3", str(UNINSTALLER)], cwd=str(REPO_DIR))
+def copy_assets():
+    print_h("Copying assets to $HOME")
+    AUTOSTART_DIR.mkdir(parents=True, exist_ok=True)
+    # autostart script & UI
+    shutil.copy2(ASSETS_DIR / "autostart_pikaraoke.py", HOME / "autostart_pikaraoke.py")
+    shutil.copy2(ASSETS_DIR / "pikaraoke_ui.py", HOME / "pikaraoke_ui.py")
+    # desktop entry (we regenerate Exec line to venv python)
+    desktop_src = ASSETS_DIR / "autostart_pikaraoke.desktop"
+    if desktop_src.exists():
+        # Load existing, replace Exec= line
+        content = desktop_src.read_text()
+        exec_line = f"Exec={VENV_DIR}/bin/python {HOME}/autostart_pikaraoke.py"
+        new = []
+        replaced = False
+        for line in content.splitlines():
+            if line.startswith("Exec="):
+                new.append(exec_line)
+                replaced = True
             else:
-                print(
-                    f"🧹 Detected < 0.3.1 but {UNINSTALLER.name} not found — skipping."
-                )
-
-    # Handle app autoupdate flag
-    update_flag = Path.home() / ".pikaraoke_update_pending"
-    if update_flag.exists():
-        print("🔔 Update flag detected - upgrading PiKaraoke package...")
-        update_flag.unlink()
-        venv_bin = Path.home() / ".venv-pikaraoke" / "bin"
-        pip = venv_bin / "pip"
-        run_command([str(pip), "install", "--force-reinstall", "pikaraoke"])
-
-    # System deps
-    check_platform()
-    install_system_packages()
-
-    # Optional DeskPi Lite drivers
-    if args.deskpi:
-        install_deskpi_drivers()
+                new.append(line)
+        if not replaced:
+            new.append(exec_line)
+        DESKTOP_FILE_PATH.write_text("\n".join(new) + "\n")
     else:
-        print("💡 DeskPi driver install skipped (use --deskpi to enable)")
+        DESKTOP_FILE_PATH.write_text(
+            f"""[Desktop Entry]
+Name=Start PiKaraoke
+Comment=Launch PiKaraoke on boot
+Exec={VENV_DIR}/bin/python {HOME}/autostart_pikaraoke.py
+Icon=utilities-terminal
+Terminal=false
+Type=Application
+X-GNOME-Autostart-enabled=true
+"""
+        )
+    # pk_aliases
+    aliases_src = ASSETS_DIR / "pk_aliases"
+    if aliases_src.exists():
+        shutil.copy2(aliases_src, HOME / ".pk_aliases")
+        ensure_rc_sourced(HOME / ".bashrc")
+        ensure_rc_sourced(HOME / ".zshrc")
 
-    # Final setup
-    install_start_script()
-    install_autostart_entry()
-    install_ui_module()
-    install_pk_aliases()
 
-    print("\n✅ Installation complete! System will automatically reboot.")
-    print("🔄 Rebooting...")
-    run_command(["sudo", "reboot"])
+def ensure_rc_sourced(rc_path: Path):
+    try:
+        rc_path.touch(exist_ok=True)
+        text = rc_path.read_text()
+        marker = "# >>> deskpi-karaoke aliases >>>"
+        block = f"""\n{marker}\n[ -f "$HOME/.pk_aliases" ] && source "$HOME/.pk_aliases"\n# <<< deskpi-karaoke aliases <<<\n"""
+        if marker not in text:
+            rc_path.write_text(text.rstrip() + block)
+    except Exception as e:
+        print(f"⚠️  Could not update {rc_path}: {e}")
+
+
+def git(cmd: str, default: Optional[str] = None) -> Optional[str]:
+    try:
+        out = run(
+            ["git"] + cmd.split(), check=True, cwd=str(REPO_ROOT), capture_output=True
+        ).stdout.strip()
+        return out
+    except Exception:
+        return default
+
+
+def record_state():
+    print_h("Recording installer state")
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    branch = git("rev-parse --abbrev-ref HEAD", default="unknown") or "unknown"
+    if branch in ("dev", "develop"):
+        sha = git("rev-parse HEAD", default="") or ""
+        if sha:
+            (STATE_DIR / ".last_applied_sha_dev").write_text(sha + "\n")
+            print(f"dev branch detected; recorded SHA {sha}")
+    else:
+        tag = git("describe --tags --abbrev=0", default="") or ""
+        if tag:
+            (STATE_DIR / "VERSION").write_text(tag + "\n")
+            print(f"main/tagged install; recorded VERSION {tag}")
+        else:
+            # fallback — still write something so pk update logic has a file
+            (STATE_DIR / "VERSION").write_text("0.0.0\n")
+            print("No tag found; wrote VERSION 0.0.0")
+
+
+def main():
+    print_h("PiKaraoke Installer (dev)")
+    ensure_python_version()
+    check_platform()
+    apt_install()
+    py = ensure_venv()
+    copy_assets()
+    record_state()
+
+    print_h("All done")
+    print("• Venv       :", VENV_DIR)
+    print("• Autostart  :", DESKTOP_FILE_PATH)
+    print("• State dir  :", STATE_DIR)
+    print(
+        "\nYou may need to log out and back in (or reboot) for autostart changes to take effect."
+    )
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nInterrupted.")
+        sys.exit(130)
+    except SystemExit as e:
+        raise
+    except Exception as e:
+        print(f"❌ Installer failed: {e}")
+        sys.exit(1)
