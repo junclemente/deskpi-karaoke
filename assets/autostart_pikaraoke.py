@@ -1,24 +1,36 @@
 #!/usr/bin/env python3
-
+import json
+import os
+import socket
 import subprocess
 import time
-import socket
-import os
-
-from packaging.version import Version
-from pikaraoke_ui import show_error, show_info
+import urllib.request
 from pathlib import Path
 
+try:
+    from packaging.version import Version
+except Exception:
+    # Fallback if packaging isn't installed
+    class Version(str):
+        @property
+        def major(self):
+            return int(str(self).split(".")[0] or 0)
+
+        @property
+        def minor(self):
+            return int((str(self).split(".") + ["0", "0"])[1] or 0)
+
+
+from pikaraoke_ui import show_error, show_info
 
 CHECK_INTERVAL = 5
 INITIAL_WAIT = 10
 EXTENDED_WAIT = 30
 
 
-# --- Logic ---
-def check_internet():
+def check_internet(timeout=3):
     try:
-        socket.setdefaulttimeout(3)
+        socket.setdefaulttimeout(timeout)
         socket.create_connection(("8.8.8.8", 53))
         return True
     except OSError:
@@ -31,22 +43,26 @@ def launch_pikaraoke():
     env["PATH"] = f"{venv_bin}:{env['PATH']}"
     logfile = Path.home() / "pikaraoke_output.log"
     with open(logfile, "a") as log:
-        log.write("🎤 [LOG] launch_pikaraoke() triggered\n")
-        subprocess.Popen([str(venv_bin / "pikaraoke")], stdout=log, stderr=log, env=env)
+        log.write(
+            f"🎤 [LOG] Launching PiKaraoke @ {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+        )
+        # Launch via entrypoint so we respect the installed package
+        subprocess.Popen(["pikaraoke"], stdout=log, stderr=subprocess.STDOUT, env=env)
 
 
 def get_installed_pikaraoke_version():
     try:
-        output = subprocess.check_output(["pikaraoke", "--version"])
-        return Version(output.decode().strip().lstrip("v"))
+        out = subprocess.check_output(["pikaraoke", "--version"])
+        return Version(out.decode().strip().lstrip("v"))
     except Exception:
         return Version("0.0.0")
 
 
-def get_latest_pikaraoke_version():
+def get_latest_pikaraoke_version(timeout=2):
+    url = "https://pypi.org/pypi/pikaraoke/json"
     try:
-        with urllib.request.urlopen("https://pypi.org/pypi/pikaraoke/json") as response:
-            data = json.load(response)
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            data = json.load(r)
             return Version(data["info"]["version"])
     except Exception:
         return None
@@ -59,7 +75,7 @@ def mark_for_update():
 
 
 def main():
-    # check for new major.minor version of PiKaraoke
+    # Opportunistic package update hint (non-blocking)
     installed_version = get_installed_pikaraoke_version()
     latest_version = get_latest_pikaraoke_version()
     if latest_version and (installed_version.major, installed_version.minor) < (
@@ -68,29 +84,28 @@ def main():
     ):
         mark_for_update()
 
-    # quiet polling - search for internet
-    start_time = time.time()
-    while (time.time() - start_time) < INITIAL_WAIT:
+    # Quiet polling (INITIAL_WAIT)
+    start = time.time()
+    while time.time() - start < INITIAL_WAIT:
         if check_internet():
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return
         time.sleep(CHECK_INTERVAL)
 
-    # show popup if internet not found with INITIAL_WAIT period
+    # Extended wait with small hint
     show_info(
         "🔔 Connecting to internet...\nSearching for up to 30 seconds...", duration=2
     )
-
-    extended_start = time.time()
-    while (time.time() - extended_start) < EXTENDED_WAIT:
+    start = time.time()
+    while time.time() - start < EXTENDED_WAIT:
         if check_internet():
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return
         time.sleep(CHECK_INTERVAL)
 
-    # fallback if internet not found
+    # Fallback if still offline
     show_error("❌ No internet found.\nPlease connect to the internet and try again.")
 
 
