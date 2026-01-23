@@ -42,6 +42,8 @@ APT_PKGS = [
     "python3-venv",
     "python3-pip",
     "ffmpeg",
+    "nodejs", 
+    "npm",
 ]
 
 
@@ -213,6 +215,18 @@ def record_state():
             (STATE_DIR / "VERSION").write_text("0.0.0\n")
             print("No tag found; wrote VERSION 0.0.0")
 
+def install_ytdlp_config():
+    print_h("Configuring yt-dlp defaults")
+    cfg_dir = HOME / ".config" / "yt-dlp"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    cfg_file = cfg_dir / "config"
+    cfg_file.write_text(
+        "--js-runtimes node\n"
+        "-t mp4\n"
+        "--merge-output-format mp4\n",
+        encoding="utf-8"
+    )
+    print(f"✅ Wrote {cfg_file}")
 
 def main():
     print_h("PiKaraoke Installer (dev)")
@@ -220,6 +234,7 @@ def main():
     check_platform()
     apt_install()
     py = ensure_venv()
+    install_ytdlp_config()
     copy_assets()
     record_state()
 

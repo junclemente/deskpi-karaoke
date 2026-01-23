@@ -7,6 +7,11 @@ import time
 import urllib.request
 from pathlib import Path
 
+# Ensure vevn binaries are available for parts: 
+Home = Path.home()
+VENV_BIN = HOME / "./venv-pikaraoke" / "bin"
+os.environ["PATH"] = f"{VENV_BIN}:{OS.ENVIRON.GET('PATH', "")}"
+
 try:
     from packaging.version import Version
 except Exception:
