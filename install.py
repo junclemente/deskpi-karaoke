@@ -20,21 +20,21 @@ from pathlib import Path
 from typing import Optional
 
 HOME = Path.home()
-STATE_DIR = HOME / ".deskpi-karaoke"
 VENV_DIR = HOME / ".venv-pikaraoke"
+STATE_DIR = HOME / ".deskpi-karaoke"
 REPO_ROOT = Path(__file__).resolve().parent
 ASSETS_DIR = REPO_ROOT / "assets"
 AUTOSTART_DIR = HOME / ".config" / "autostart"
 DESKTOP_FILE_PATH = AUTOSTART_DIR / "pikaraoke.desktop"
 
-PY_MIN = (3, 9)
+PY_MIN = (3, 10)
 
 PKG_CORE = [
     "pip>=24.0",
     "setuptools>=68",
     "wheel",
     "packaging>=24.0",
-    "yt-dlp>=2024.7.0",
+    "yt-dlp",
     "pikaraoke",  # main app
 ]
 
@@ -53,7 +53,6 @@ def print_h(msg: str):
 
 def run(cmd, check=True, cwd=None, env=None, capture_output=False, text=True):
     if isinstance(cmd, str):
-        shell = True
         return subprocess.run(
             cmd,
             check=check,
@@ -100,7 +99,7 @@ def apt_install():
         print("ℹ️  apt not found (non-Debian system?) Skipping system packages.")
         return
     # Update
-    cmd_update = f"{apt} update -y"
+    cmd_update = f"{apt} update"
     # Install base pkgs
     pkgs = " ".join(APT_PKGS)
     cmd_install = f"{apt} install -y {pkgs}"
@@ -224,7 +223,7 @@ def install_ytdlp_config():
         "--js-runtimes node\n"
         "-t mp4\n"
         "--merge-output-format mp4\n",
-        encoding="utf-8"
+        encoding="utf-8",
     )
     print(f"✅ Wrote {cfg_file}")
 
