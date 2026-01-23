@@ -7,10 +7,11 @@ import time
 import urllib.request
 from pathlib import Path
 
-# Ensure vevn binaries are available for parts: 
-Home = Path.home()
-VENV_BIN = HOME / "./venv-pikaraoke" / "bin"
-os.environ["PATH"] = f"{VENV_BIN}:{OS.ENVIRON.GET('PATH', "")}"
+# Ensure venv binaries are available in PATH (pikaraoke, yt-dlp)
+HOME = Path.home()
+VENV_BIN = HOME / ".venv-pikaraoke" / "bin"
+os.environ["PATH"] = f"{VENV_BIN}:{os.environ.get('PATH', '')}"
+
 
 try:
     from packaging.version import Version
@@ -43,22 +44,24 @@ def check_internet(timeout=3):
 
 
 def launch_pikaraoke():
-    venv_bin = Path.home() / ".venv-pikaraoke" / "bin"
     env = os.environ.copy()
-    env["PATH"] = f"{venv_bin}:{env['PATH']}"
-    logfile = Path.home() / "pikaraoke_output.log"
+    env["PATH"] = f"{VENV_BIN}:{env.get('PATH','')}"
+    logfile = HOME / "pikaraoke_output.log"
     with open(logfile, "a") as log:
         log.write(
             f"🎤 [LOG] Launching PiKaraoke @ {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
         )
         # Launch via entrypoint so we respect the installed package
-        subprocess.Popen(["pikaraoke"], stdout=log, stderr=subprocess.STDOUT, env=env)
+        try:
+            subprocess.Popen([str(VENV_BIN / "pikaraoke")], stdout=log, stderr=subprocess.STDOUT, env=env)
+        except Exception as e:
+            log.write(f"❌ [LOG] Failed to launch PiKaraoke: {e}\n")
 
 
 def get_installed_pikaraoke_version():
     try:
-        out = subprocess.check_output(["pikaraoke", "--version"])
-        return Version(out.decode().strip().lstrip("v"))
+        out = subprocess.check_output([str(VENV_BIN / "pikaraoke"), "--version"], text=True)
+        return Version(out.strip().lstrip("v"))
     except Exception:
         return Version("0.0.0")
 
@@ -74,7 +77,7 @@ def get_latest_pikaraoke_version(timeout=2):
 
 
 def mark_for_update():
-    flag_path = Path.home() / ".pikaraoke_update_pending"
+    flag_path = HOME / ".pikaraoke_update_pending"
     flag_path.touch()
     print("🔔 Update flag set. PiKaraoke will update on next launch.")
 
