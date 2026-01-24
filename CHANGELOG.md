@@ -2,6 +2,72 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.5] - 2026-01-23
+
+### 🚀 New Features
+
+- **JavaScript runtime support for yt-dlp**
+  - Automatically installs and configures **Deno** as a JS runtime
+  - Ensures compatibility with recent YouTube extraction changes
+
+### 🛠 Improvements
+
+- Installer now guarantees `yt-dlp` is available to PiKaraoke via PATH
+- Autostart launcher explicitly includes:
+  - PiKaraoke virtual environment binaries
+  - Deno binaries for JS execution
+- Improved reliability for fresh installs and upgrades without manual fixes
+
+### 🐛 Fixes
+
+- Fixed PiKaraoke startup failure when `yt-dlp` was not discoverable
+- Prevented missing formats caused by lack of JS runtime during extraction
+
+### 📝 Notes
+
+- This release responds to upstream YouTube changes that now require a JS runtime
+- Recommended for **all users**, especially those experiencing download or playback issues
+
+## [v0.3.4] 2024-08-13
+
+### 🚀 New Features
+
+- **Main branch version check**
+  - Installer now runs only if the recorded installed version differs from the latest Git tag.
+  - Version recorded in `~/.deskpi-karaoke/VERSION` after a successful main install.
+  - Skips redundant installs/reboots when repo and version are unchanged.
+
+- **Dev branch SHA check**
+  - Removed version check for dev (since it changes frequently without formal version bumps).
+  - Installer now runs only if `origin/dev` has new commits since last applied.
+  - Tracks applied commit SHA in `~/.deskpi-karaoke/.last_applied_sha_dev`.
+
+### 🛠 Improvements
+
+- Unified branch sync logic with `_pk_sync_repo_branch`.
+- Fast-forward only pulls to prevent unintended merges.
+- Added `pk version` command:
+  - Shows installed main version (from `VERSION` file)
+  - Shows latest Git tag
+  - Shows last applied dev SHA
+- Optional reboot triggered only when `.reboot_required` exists (created by installer).
+
+### ✅ Testing
+
+- **Main branch**
+  - No changes → installer skipped.
+  - New tag → installer runs, updates `VERSION`.
+- **Dev branch**
+  - No new commits → installer skipped.
+  - New commit → installer runs, updates `.last_applied_sha_dev`.
+- Verified installer-triggered reboot works as expected.
+
+### 📌 Next Steps
+
+- Ensure `install.py` writes to `VERSION` on main installs.
+- Ensure installer writes `.reboot_required` when reboot is necessary.
+- Optional: add `pk forceupdate` to bypass gating for troubleshooting.
+
 [v0.3.3] - 2024-08-12
 🚀 New Features
 🖥️ pk alias command suite for quick terminal access:
@@ -93,24 +159,20 @@ Recommended for all users, especially those running on the dev branch or updatin
 ### 🎉 Major Features
 
 - 🐍 **Rewrote the entire installer in Python**
-
   - Fully replaces the previous `install.sh` shell-based setup
   - Provides a clean, structured foundation for future enhancements
 
 - 💻 **Single-command setup with `install.py`**
-
   - Optional `--deskpi` flag installs DeskPi Lite 4 drivers
   - Installs system dependencies: `ffmpeg`, `chromium-browser`, `python3-venv`, etc.
   - Creates Python virtual environment at `~/.venv-pikaraoke`
 
 - 🔁 **Autostart after internet is detected**
-
   - On boot, the system waits up to 30 seconds for internet before launching PiKaraoke
   - Internet-aware logic handled via `pikaraoke_start.py`
   - No RaspiWiFi fallback or reboots required
 
 - 📂 **Assets-based setup**
-
   - Copies `pikaraoke_start.py` and autostart `.desktop` file from the `assets/` folder
   - Improves maintainability and decouples logic from code
 

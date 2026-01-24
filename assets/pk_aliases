@@ -1,3 +1,10 @@
+cat > ~/.pk_aliases << 'EOF'
+# ===== PiKaraoke updater / helper =====
+
+# Core repo config
+export PK_HOME="${PK_HOME:-$HOME/deskpi-karaoke}"
+export PK_REMOTE="${PK_REMOTE:-https://github.com/junclemente/deskpi-karaoke.git}"   # change if you use a fork
+
 # State dir and flags
 export PK_STATE="${PK_STATE:-$HOME/.deskpi-karaoke}"
 export PK_REBOOT_FLAG="$PK_STATE/.reboot_required"
@@ -55,7 +62,6 @@ pk() {
       [ $rc -eq 2 ] && return 1
 
       # main: version gate — skip if VERSION unchanged
-      # (Your installer should write $PK_VER_FILE after successful install)
       latest_tag="$(git -C "$PK_HOME" tag --sort=-v:refname | head -n1 | sed 's/^v//;s/^V//')"
       recorded_ver="$( [ -f "$PK_VER_FILE" ] && cat "$PK_VER_FILE" || echo "" )"
 
@@ -65,7 +71,6 @@ pk() {
       fi
 
       _pk_run_installer_then_maybe_reboot || return $?
-      # If successful, remember the tag (installer can also do this)
       [ -n "$latest_tag" ] && echo "$latest_tag" > "$PK_VER_FILE"
       ;;
 
@@ -74,7 +79,6 @@ pk() {
       _pk_sync_repo_branch "dev"; rc=$?
       [ $rc -eq 2 ] && return 1
 
-      # dev: commit SHA gate — only run if origin/dev moved since last apply
       current_dev_sha="$(git -C "$PK_HOME" rev-parse origin/dev)"
       last_applied_sha="$( [ -f "$PK_LAST_SHA_DEV" ] && cat "$PK_LAST_SHA_DEV" || echo "" )"
 
@@ -106,3 +110,8 @@ pk() {
       ;;
   esac
 }
+
+# Tiny helpers so you can quickly edit this file
+pk_aliases() { nano "$HOME/.pk_aliases"; }
+pi_aliases() { pk_aliases; }
+EOF

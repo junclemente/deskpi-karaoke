@@ -1,24 +1,45 @@
 #!/usr/bin/env python3
-
+import json
+import os
+import socket
 import subprocess
 import time
-import socket
-import os
-
-from packaging.version import Version
-from pikaraoke_ui import show_error, show_info
+import urllib.request
 from pathlib import Path
 
+# Ensure venv + deno binaries are available in PATH (pikaraoke, yt-dlp, deno)
+HOME = Path.home()
+VENV_BIN = HOME / ".venv-pikaraoke" / "bin"
+DENO_BIN = HOME / ".deno" / "bin"
+
+base_path = os.environ.get("PATH", "")
+os.environ["PATH"] = f"{VENV_BIN}:{DENO_BIN}:/usr/local/bin:/usr/bin:/bin:{base_path}"
+
+
+try:
+    from packaging.version import Version
+except Exception:
+    # Fallback if packaging isn't installed
+    class Version(str):
+        @property
+        def major(self):
+            return int(str(self).split(".")[0] or 0)
+
+        @property
+        def minor(self):
+            return int((str(self).split(".") + ["0", "0"])[1] or 0)
+
+
+from pikaraoke_ui import show_error, show_info
 
 CHECK_INTERVAL = 5
 INITIAL_WAIT = 10
 EXTENDED_WAIT = 30
 
 
-# --- Logic ---
-def check_internet():
+def check_internet(timeout=3):
     try:
-        socket.setdefaulttimeout(3)
+        socket.setdefaulttimeout(timeout)
         socket.create_connection(("8.8.8.8", 53))
         return True
     except OSError:
@@ -26,40 +47,50 @@ def check_internet():
 
 
 def launch_pikaraoke():
-    venv_bin = Path.home() / ".venv-pikaraoke" / "bin"
     env = os.environ.copy()
-    env["PATH"] = f"{venv_bin}:{env['PATH']}"
-    logfile = Path.home() / "pikaraoke_output.log"
+    env["PATH"] = os.environ["PATH"]
+    logfile = HOME / "pikaraoke_output.log"
     with open(logfile, "a") as log:
-        log.write("🎤 [LOG] launch_pikaraoke() triggered\n")
-        subprocess.Popen([str(venv_bin / "pikaraoke")], stdout=log, stderr=log, env=env)
+        log.write(
+            f"🎤 [LOG] Launching PiKaraoke @ {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+        )
+        if not (VENV_BIN / "yt-dlp").exists():
+            log.write("⚠️ [LOG] yt-dlp not found in venv bin\n")
+        if not (DENO_BIN / "deno").exists():
+            log.write("⚠️ [LOG] deno not found in ~/.deno/bin\n")
+        # Launch via entrypoint so we respect the installed package
+        try:
+            subprocess.Popen([str(VENV_BIN / "pikaraoke")], stdout=log, stderr=subprocess.STDOUT, env=env)
+        except Exception as e:
+            log.write(f"❌ [LOG] Failed to launch PiKaraoke: {e}\n")
 
 
 def get_installed_pikaraoke_version():
     try:
-        output = subprocess.check_output(["pikaraoke", "--version"])
-        return Version(output.decode().strip().lstrip("v"))
+        out = subprocess.check_output([str(VENV_BIN / "pikaraoke"), "--version"], text=True)
+        return Version(out.strip().lstrip("v"))
     except Exception:
         return Version("0.0.0")
 
 
-def get_latest_pikaraoke_version():
+def get_latest_pikaraoke_version(timeout=2):
+    url = "https://pypi.org/pypi/pikaraoke/json"
     try:
-        with urllib.request.urlopen("https://pypi.org/pypi/pikaraoke/json") as response:
-            data = json.load(response)
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            data = json.load(r)
             return Version(data["info"]["version"])
     except Exception:
         return None
 
 
 def mark_for_update():
-    flag_path = Path.home() / ".pikaraoke_update_pending"
+    flag_path = HOME / ".pikaraoke_update_pending"
     flag_path.touch()
     print("🔔 Update flag set. PiKaraoke will update on next launch.")
 
 
 def main():
-    # check for new major.minor version of PiKaraoke
+    # Opportunistic package update hint (non-blocking)
     installed_version = get_installed_pikaraoke_version()
     latest_version = get_latest_pikaraoke_version()
     if latest_version and (installed_version.major, installed_version.minor) < (
@@ -68,29 +99,28 @@ def main():
     ):
         mark_for_update()
 
-    # quiet polling - search for internet
-    start_time = time.time()
-    while (time.time() - start_time) < INITIAL_WAIT:
+    # Quiet polling (INITIAL_WAIT)
+    start = time.time()
+    while time.time() - start < INITIAL_WAIT:
         if check_internet():
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return
         time.sleep(CHECK_INTERVAL)
 
-    # show popup if internet not found with INITIAL_WAIT period
+    # Extended wait with small hint
     show_info(
         "🔔 Connecting to internet...\nSearching for up to 30 seconds...", duration=2
     )
-
-    extended_start = time.time()
-    while (time.time() - extended_start) < EXTENDED_WAIT:
+    start = time.time()
+    while time.time() - start < EXTENDED_WAIT:
         if check_internet():
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return
         time.sleep(CHECK_INTERVAL)
 
-    # fallback if internet not found
+    # Fallback if still offline
     show_error("❌ No internet found.\nPlease connect to the internet and try again.")
 
 
