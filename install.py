@@ -44,6 +44,7 @@ APT_PKGS = [
     "ffmpeg",
     "nodejs", 
     "npm",
+    "curl",
 ]
 
 

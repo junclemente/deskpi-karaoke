@@ -7,12 +7,13 @@ import time
 import urllib.request
 from pathlib import Path
 
-# Ensure venv binaries are available in PATH (pikaraoke, yt-dlp)
+# Ensure venv + deno binaries are available in PATH (pikaraoke, yt-dlp, deno)
 HOME = Path.home()
 VENV_BIN = HOME / ".venv-pikaraoke" / "bin"
 DENO_BIN = HOME / ".deno" / "bin"
-os.environ["PATH"] = f"{VENV_BIN}:{os.environ.get('PATH', '')}"
-os.environ["PATH"] = f"{VENV_BIN}:{DENO_BIN}:" + {os.environ.get('PATH', '')}"
+
+base_path = os.environ.get("PATH", "")
+os.environ["PATH"] = f"{VENV_BIN}:{DENO_BIN}:/usr/local/bin:/usr/bin:/bin:{base_path}"
 
 
 try:
@@ -47,12 +48,16 @@ def check_internet(timeout=3):
 
 def launch_pikaraoke():
     env = os.environ.copy()
-    env["PATH"] = f"{VENV_BIN}:{env.get('PATH','')}"
+    env["PATH"] = os.environ["PATH"]
     logfile = HOME / "pikaraoke_output.log"
     with open(logfile, "a") as log:
         log.write(
             f"🎤 [LOG] Launching PiKaraoke @ {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
         )
+        if not (VENV_BIN / "yt-dlp").exists():
+            log.write("⚠️ [LOG] yt-dlp not found in venv bin\n")
+        if not (DENO_BIN / "deno").exists():
+            log.write("⚠️ [LOG] deno not found in ~/.deno/bin\n")
         # Launch via entrypoint so we respect the installed package
         try:
             subprocess.Popen([str(VENV_BIN / "pikaraoke")], stdout=log, stderr=subprocess.STDOUT, env=env)
