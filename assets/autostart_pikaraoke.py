@@ -10,7 +10,9 @@ from pathlib import Path
 # Ensure venv binaries are available in PATH (pikaraoke, yt-dlp)
 HOME = Path.home()
 VENV_BIN = HOME / ".venv-pikaraoke" / "bin"
+DENO_BIN = HOME / ".deno" / "bin"
 os.environ["PATH"] = f"{VENV_BIN}:{os.environ.get('PATH', '')}"
+os.environ["PATH"] = f"{VENV_BIN}:{DENO_BIN}:" + {os.environ.get('PATH', '')}"
 
 
 try:
