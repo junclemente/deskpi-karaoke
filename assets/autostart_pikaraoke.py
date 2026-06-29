@@ -58,22 +58,28 @@ def launch_pikaraoke():
             log.write("⚠️ [LOG] yt-dlp not found in venv bin\n")
         if not (DENO_BIN / "deno").exists():
             log.write("⚠️ [LOG] deno not found in ~/.deno/bin\n")
-        # Launch via entrypoint so we respect the installed package
         try:
-            subprocess.Popen([str(VENV_BIN / "pikaraoke")], stdout=log, stderr=subprocess.STDOUT, env=env)
+            subprocess.Popen(
+                [str(VENV_BIN / "pikaraoke")],
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                env=env,
+            )
         except Exception as e:
             log.write(f"❌ [LOG] Failed to launch PiKaraoke: {e}\n")
 
 
 def get_installed_pikaraoke_version():
     try:
-        out = subprocess.check_output([str(VENV_BIN / "pikaraoke"), "--version"], text=True)
+        out = subprocess.check_output(
+            [str(VENV_BIN / "pikaraoke"), "--version"], text=True
+        )
         return Version(out.strip().lstrip("v"))
     except Exception:
         return Version("0.0.0")
 
 
-def get_latest_pikaraoke_version(timeout=2):
+def get_latest_pikaraoke_version(timeout=5):
     url = "https://pypi.org/pypi/pikaraoke/json"
     try:
         with urllib.request.urlopen(url, timeout=timeout) as r:
@@ -83,44 +89,65 @@ def get_latest_pikaraoke_version(timeout=2):
         return None
 
 
-def mark_for_update():
-    flag_path = HOME / ".pikaraoke_update_pending"
-    flag_path.touch()
-    print("🔔 Update flag set. PiKaraoke will update on next launch.")
+def update_pikaraoke():
+    """Upgrade pikaraoke and yt-dlp in the venv. Runs synchronously before launch."""
+    logfile = HOME / "pikaraoke_output.log"
+    with open(logfile, "a") as log:
+        log.write(
+            f"🔄 [LOG] Upgrading pikaraoke + yt-dlp @ {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+        )
+        result = subprocess.run(
+            [str(VENV_BIN / "pip"), "install", "--upgrade", "pikaraoke", "yt-dlp"],
+            stdout=log,
+            stderr=subprocess.STDOUT,
+        )
+        if result.returncode != 0:
+            log.write("⚠️ [LOG] pip upgrade exited with non-zero status\n")
+        else:
+            log.write("✅ [LOG] pip upgrade completed\n")
+
+
+def check_and_update():
+    """Check PyPI; upgrade only if a newer version exists. Returns True if update ran."""
+    installed = get_installed_pikaraoke_version()
+    latest = get_latest_pikaraoke_version()
+    if latest is None:
+        return False  # PyPI unreachable — skip, don't block launch
+    if latest > installed:
+        show_info(
+            f"🔄 Update available: {installed} → {latest}\nUpdating before launch...",
+            duration=2,
+        )
+        update_pikaraoke()
+        return True
+    return False
 
 
 def main():
-    # Opportunistic package update hint (non-blocking)
-    installed_version = get_installed_pikaraoke_version()
-    latest_version = get_latest_pikaraoke_version()
-    if latest_version and (installed_version.major, installed_version.minor) < (
-        latest_version.major,
-        latest_version.minor,
-    ):
-        mark_for_update()
-
     # Quiet polling (INITIAL_WAIT)
     start = time.time()
     while time.time() - start < INITIAL_WAIT:
         if check_internet():
+            check_and_update()
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return
         time.sleep(CHECK_INTERVAL)
 
-    # Extended wait with small hint
+    # Extended wait with notification
     show_info(
         "🔔 Connecting to internet...\nSearching for up to 30 seconds...", duration=2
     )
     start = time.time()
     while time.time() - start < EXTENDED_WAIT:
         if check_internet():
+            check_and_update()
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return
         time.sleep(CHECK_INTERVAL)
 
-    # Fallback if still offline
+    # Fallback if still offline — do not launch
     show_error("❌ No internet found.\nPlease connect to the internet and try again.")
 
 
