@@ -147,8 +147,16 @@ def main():
             return
         time.sleep(CHECK_INTERVAL)
 
-    # Fallback if still offline — do not launch
-    show_error("❌ No internet found.\nPlease connect to the internet and try again.")
+    # Fallback if still offline: launch the WiFi captive portal so the user
+    # can enter their home WiFi credentials from any phone or laptop.
+    try:
+        from raspi_portal import run_portal
+        run_portal()
+    except Exception as exc:
+        show_error(
+            f"❌ No internet found.\nPortal error: {exc}\n"
+            "Please connect to the internet and restart."
+        )
 
 
 if __name__ == "__main__":
