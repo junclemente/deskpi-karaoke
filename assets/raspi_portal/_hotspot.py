@@ -20,6 +20,35 @@ def _nmcli(*args, check=False, capture=True):
     )
 
 
+def _wait_for_ip(
+    ip: str = PORTAL_IP,
+    iface: str = _IFACE,
+    timeout: float = 5.0,
+    interval: float = 0.5,
+):
+    """Poll until ip is assigned to iface, raising RuntimeError on timeout.
+
+    nmcli reports a connection as 'up' before the kernel has finished
+    assigning the address, so binding a socket immediately after
+    'nmcli connection up' can fail with EADDRNOTAVAIL (Errno 99).
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        result = subprocess.run(
+            ["ip", "addr", "show", iface],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if ip in result.stdout:
+            return
+        time.sleep(interval)
+    raise RuntimeError(
+        f"Timed out after {timeout:.0f} s waiting for {ip} on {iface}. "
+        "NetworkManager reported the hotspot as up but the IP was never assigned."
+    )
+
+
 def create_hotspot():
     """Create and activate a WPA2 access point at PORTAL_IP via NetworkManager."""
     # Remove any leftover connection from a previous interrupted run
@@ -40,8 +69,7 @@ def create_hotspot():
         check=True,
     )
     _nmcli("connection", "up", HOTSPOT_CON_NAME, check=True)
-    # Give NM and dnsmasq time to come up before we bind the socket
-    time.sleep(3)
+    _wait_for_ip()
 
 
 def teardown_hotspot():
