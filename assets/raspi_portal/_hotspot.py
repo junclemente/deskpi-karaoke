@@ -37,18 +37,22 @@ def _safe_args_str(args) -> str:
     return " ".join(parts)
 
 
-def _nmcli(*args, check=False, capture=True, log: Optional[IO[str]] = None):
+def _nmcli(*args, check=False, log: Optional[IO[str]] = None):
     cmd = ["sudo", "nmcli"] + list(args)
     _log_line(log, f"nmcli: {_safe_args_str(args)}")
     try:
-        result = subprocess.run(cmd, capture_output=capture, text=True, check=check)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=check)
     except subprocess.CalledProcessError as exc:
-        detail = f" stderr: {exc.stderr.strip()}" if exc.stderr and exc.stderr.strip() else ""
-        _log_line(log, f"nmcli exit={exc.returncode} FAILED{detail}")
-        raise
-    detail = ""
-    if result.returncode != 0 and hasattr(result, "stderr") and result.stderr and result.stderr.strip():
-        detail = f" stderr: {result.stderr.strip()}"
+        # nmcli sometimes writes diagnostics to stdout rather than stderr;
+        # prefer stderr, fall back to stdout so nothing is silently discarded.
+        error_text = (exc.stderr or "").strip() or (exc.stdout or "").strip()
+        _log_line(log, f"nmcli exit={exc.returncode} FAILED — {error_text or '(no output)'}")
+        raise RuntimeError(
+            f"nmcli {_safe_args_str(args)!r} exited {exc.returncode}"
+            + (f"\n{error_text}" if error_text else "")
+        ) from exc
+    output_text = (result.stderr or "").strip() or (result.stdout or "").strip()
+    detail = f" — {output_text}" if (result.returncode != 0 and output_text) else ""
     _log_line(log, f"nmcli exit={result.returncode}{detail}")
     return result
 
