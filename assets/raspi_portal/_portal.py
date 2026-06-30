@@ -1,8 +1,9 @@
 """Captive-portal orchestrator: hotspot → HTTP form → connect → reboot."""
 
 import subprocess
-import sys
 import time
+import traceback
+from pathlib import Path
 
 from ._hotspot import (
     HOTSPOT_PASS,
@@ -15,6 +16,15 @@ from ._hotspot import (
 from ._server import run_server, stop_server
 
 _PORT = 80
+_LOGFILE = Path.home() / "pikaraoke_output.log"
+
+
+def _plog(log, msg: str) -> None:
+    """Write a timestamped line to the log file AND print it to stdout."""
+    line = f"[PORTAL {time.strftime('%H:%M:%S')}] {msg}"
+    print(line)
+    log.write(line + "\n")
+    log.flush()
 
 
 def _allow_unprivileged_port_80():
@@ -54,55 +64,63 @@ def run_portal():
     6. Connect wlan0 to the user's home WiFi via nmcli.
     7. Reboot after 10 seconds.
     """
-    _allow_unprivileged_port_80()
+    with open(_LOGFILE, "a") as log:
+        _plog(log, "===== portal session start =====")
+        _allow_unprivileged_port_80()
 
-    print("[PORTAL] Creating hotspot…")
-    try:
-        create_hotspot()
-    except Exception as exc:
-        # Belt-and-suspenders: ensure the profile is gone even if
-        # create_hotspot()'s own cleanup didn't fully run.
-        teardown_hotspot()
-        print(f"[PORTAL] Failed to create hotspot: {exc}", file=sys.stderr)
+        _plog(log, "Entering create_hotspot()")
         try:
-            from pikaraoke_ui import show_error  # type: ignore[import]
-            show_error(
-                f"❌ No internet found and hotspot setup failed.\n{exc}\n"
-                "Please connect manually and restart."
-            )
-        except Exception:
-            pass
-        return
+            create_hotspot(log=log)
+        except Exception as exc:
+            _plog(log, f"create_hotspot() FAILED: {exc}")
+            log.write(traceback.format_exc())
+            log.flush()
+            # Belt-and-suspenders: ensure the profile is gone even if
+            # create_hotspot()'s own cleanup didn't fully run.
+            teardown_hotspot(log=log)
+            try:
+                from pikaraoke_ui import show_error  # type: ignore[import]
+                show_error(
+                    f"❌ No internet found and hotspot setup failed.\n{exc}\n"
+                    "Please connect manually and restart."
+                )
+            except Exception:
+                pass
+            return
 
-    _show(
-        f"📡 No internet detected.\n\n"
-        f"1. Connect your phone/laptop to:\n"
-        f"   WiFi: {HOTSPOT_SSID}\n"
-        f"   Password: {HOTSPOT_PASS}\n\n"
-        f"2. Open a browser and go to:\n"
-        f"   http://{PORTAL_IP}\n\n"
-        f"3. Enter your home WiFi details.",
-        duration=300,  # stays up for 5 min; dismissed automatically once done
-    )
+        _plog(log, f"Hotspot up — HTTP server starting on http://{PORTAL_IP}:{_PORT}")
 
-    print(f"[PORTAL] HTTP server starting on http://{PORTAL_IP}:{_PORT}")
-    server, result_queue = run_server(PORTAL_IP, _PORT)
+        _show(
+            f"📡 No internet detected.\n\n"
+            f"1. Connect your phone/laptop to:\n"
+            f"   WiFi: {HOTSPOT_SSID}\n"
+            f"   Password: {HOTSPOT_PASS}\n\n"
+            f"2. Open a browser and go to:\n"
+            f"   http://{PORTAL_IP}\n\n"
+            f"3. Enter your home WiFi details.",
+            duration=300,  # stays up for 5 min; dismissed automatically once done
+        )
 
-    # Block until the user submits the form
-    ssid, password = result_queue.get()
-    print(f"[PORTAL] Credentials received for SSID: '{ssid}'")
+        server, result_queue = run_server(PORTAL_IP, _PORT)
 
-    # Give the browser a moment to fully receive the confirmation page before
-    # the hotspot disappears
-    time.sleep(2)
-    stop_server(server)
+        # Block until the user submits the form
+        _plog(log, "Waiting for WiFi credentials from portal form…")
+        ssid, password = result_queue.get()
+        _plog(log, f"Credentials received for SSID: '{ssid}'")
 
-    print("[PORTAL] Tearing down hotspot…")
-    teardown_hotspot()
+        # Give the browser a moment to fully receive the confirmation page before
+        # the hotspot disappears
+        time.sleep(2)
+        stop_server(server)
 
-    print(f"[PORTAL] Connecting to '{ssid}'…")
-    connect_wifi(ssid, password)
+        _plog(log, "Tearing down hotspot…")
+        teardown_hotspot(log=log)
 
-    print("[PORTAL] Rebooting in 10 seconds…")
-    time.sleep(10)
-    subprocess.run(["sudo", "reboot"], check=False)
+        _plog(log, f"Connecting to '{ssid}'…")
+        ok = connect_wifi(ssid, password, log=log)
+        if not ok:
+            _plog(log, f"WARNING: connect_wifi failed for '{ssid}' — rebooting anyway")
+
+        _plog(log, "Rebooting in 10 seconds…")
+        time.sleep(10)
+        subprocess.run(["sudo", "reboot"], check=False)

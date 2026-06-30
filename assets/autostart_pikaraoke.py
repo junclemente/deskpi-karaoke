@@ -46,6 +46,23 @@ def check_internet(timeout=3):
         return False
 
 
+def check_wlan0_internet(timeout=3):
+    """Return True only if 8.8.8.8 is reachable via wlan0, ignoring eth0.
+
+    Uses ping -I wlan0 so the kernel is forced to route through the WiFi
+    interface regardless of what other interfaces are up.
+    """
+    try:
+        result = subprocess.run(
+            ["ping", "-I", "wlan0", "-c", "1", "-W", str(timeout), "8.8.8.8"],
+            capture_output=True,
+            check=False,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
 def launch_pikaraoke():
     env = os.environ.copy()
     env["PATH"] = os.environ["PATH"]
@@ -127,7 +144,7 @@ def main():
     # Quiet polling (INITIAL_WAIT)
     start = time.time()
     while time.time() - start < INITIAL_WAIT:
-        if check_internet():
+        if check_wlan0_internet():
             check_and_update()
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
@@ -140,7 +157,7 @@ def main():
     )
     start = time.time()
     while time.time() - start < EXTENDED_WAIT:
-        if check_internet():
+        if check_wlan0_internet():
             check_and_update()
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
