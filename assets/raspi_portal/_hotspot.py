@@ -105,6 +105,7 @@ def create_hotspot(log: Optional[IO[str]] = None):
             "con-name", HOTSPOT_CON_NAME,
             "ssid", HOTSPOT_SSID,
             "802-11-wireless.mode", "ap",
+            "802-11-wireless.band", "bg",
             "802-11-wireless-security.key-mgmt", "wpa-psk",
             "802-11-wireless-security.psk", HOTSPOT_PASS,
             "ipv4.method", "shared",
