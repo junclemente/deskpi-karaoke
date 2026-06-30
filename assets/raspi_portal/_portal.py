@@ -60,6 +60,9 @@ def run_portal():
     try:
         create_hotspot()
     except Exception as exc:
+        # Belt-and-suspenders: ensure the profile is gone even if
+        # create_hotspot()'s own cleanup didn't fully run.
+        teardown_hotspot()
         print(f"[PORTAL] Failed to create hotspot: {exc}", file=sys.stderr)
         try:
             from pikaraoke_ui import show_error  # type: ignore[import]

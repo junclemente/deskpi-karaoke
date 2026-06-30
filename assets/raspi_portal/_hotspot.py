@@ -54,22 +54,28 @@ def create_hotspot():
     # Remove any leftover connection from a previous interrupted run
     _nmcli("connection", "delete", HOTSPOT_CON_NAME)
 
-    _nmcli(
-        "connection", "add",
-        "type", "wifi",
-        "ifname", _IFACE,
-        "con-name", HOTSPOT_CON_NAME,
-        "ssid", HOTSPOT_SSID,
-        "802-11-wireless.mode", "ap",
-        "802-11-wireless-security.key-mgmt", "wpa-psk",
-        "802-11-wireless-security.psk", HOTSPOT_PASS,
-        "ipv4.method", "shared",
-        "ipv4.addresses", _PORTAL_SUBNET,
-        "ipv6.method", "disabled",
-        check=True,
-    )
-    _nmcli("connection", "up", HOTSPOT_CON_NAME, check=True)
-    _wait_for_ip()
+    try:
+        _nmcli(
+            "connection", "add",
+            "type", "wifi",
+            "ifname", _IFACE,
+            "con-name", HOTSPOT_CON_NAME,
+            "ssid", HOTSPOT_SSID,
+            "802-11-wireless.mode", "ap",
+            "802-11-wireless-security.key-mgmt", "wpa-psk",
+            "802-11-wireless-security.psk", HOTSPOT_PASS,
+            "ipv4.method", "shared",
+            "ipv4.addresses", _PORTAL_SUBNET,
+            "ipv6.method", "disabled",
+            check=True,
+        )
+        _nmcli("connection", "up", HOTSPOT_CON_NAME, check=True)
+        _wait_for_ip()
+    except Exception:
+        # Remove the profile we may have just created so the next attempt
+        # starts clean instead of hitting a name/interface conflict.
+        _nmcli("connection", "delete", HOTSPOT_CON_NAME)
+        raise
 
 
 def teardown_hotspot():
