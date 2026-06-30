@@ -252,6 +252,11 @@ def create_hotspot(log: Optional[IO[str]] = None) -> None:
     _write_configs()
 
     try:
+        # 0. Stop the system dnsmasq service if it is running; it would
+        #    otherwise hold port 67 and prevent our own dnsmasq from binding.
+        #    check=False so we silently continue if the service is already stopped.
+        _syscmd(["sudo", "systemctl", "stop", "dnsmasq"], check=False, log=log)
+
         # 1. Release wlan0 from NM so hostapd can take exclusive control.
         _log_line(log, "Releasing wlan0 from NetworkManager")
         _syscmd(["sudo", "nmcli", "device", "set", _IFACE, "managed", "no"], log=log)
