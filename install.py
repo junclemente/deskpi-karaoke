@@ -42,9 +42,11 @@ APT_PKGS = [
     "python3-venv",
     "python3-pip",
     "ffmpeg",
-    "nodejs", 
+    "nodejs",
     "npm",
     "curl",
+    "hostapd",   # captive-portal AP mode (run directly, not via service)
+    "dnsmasq",   # captive-portal DHCP + DNS redirect (run directly, not via service)
 ]
 
 
