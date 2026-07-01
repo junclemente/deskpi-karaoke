@@ -89,11 +89,14 @@ def launch_pikaraoke():
 def get_installed_pikaraoke_version():
     try:
         out = subprocess.check_output(
-            [str(VENV_BIN / "pikaraoke"), "--version"], text=True
+            [str(VENV_BIN / "pip"), "show", "pikaraoke"], text=True
         )
-        return Version(out.strip().lstrip("v"))
+        for line in out.splitlines():
+            if line.startswith("Version:"):
+                return Version(line.split(":", 1)[1].strip())
     except Exception:
-        return Version("0.0.0")
+        pass
+    return Version("0.0.0")
 
 
 def get_latest_pikaraoke_version(timeout=5):
@@ -134,21 +137,29 @@ def _find_splash_py():
 
 
 def patch_pikaraoke():
-    """Patch pikaraoke splash.py to pass 'url' arg to get_raspi_wifi_text(). Idempotent."""
+    """Patch pikaraoke splash.py to pass 'k.url' arg to get_raspi_wifi_text(). Idempotent."""
     logfile = HOME / "pikaraoke_output.log"
-    old = "text = get_raspi_wifi_text()"
-    new = "text = get_raspi_wifi_text(url)"
+    target = "text = get_raspi_wifi_text(k.url)"
+    wrong_patch = "text = get_raspi_wifi_text(url)"
+    unpatched = "text = get_raspi_wifi_text()"
     with open(logfile, "a") as log:
         splash = _find_splash_py()
         if splash is None:
             log.write("⚠️ [PATCH] splash.py not found in venv — skipping\n")
             return
         text = splash.read_text(encoding="utf-8")
-        if old not in text:
+        if target in text:
             log.write(f"✅ [PATCH] {splash.name} already patched — no change needed\n")
             return
-        splash.write_text(text.replace(old, new, 1), encoding="utf-8")
-        log.write(f"✅ [PATCH] Patched get_raspi_wifi_text() call in {splash}\n")
+        if wrong_patch in text:
+            splash.write_text(text.replace(wrong_patch, target, 1), encoding="utf-8")
+            log.write(f"✅ [PATCH] Corrected wrong patch in {splash}\n")
+            return
+        if unpatched in text:
+            splash.write_text(text.replace(unpatched, target, 1), encoding="utf-8")
+            log.write(f"✅ [PATCH] Patched get_raspi_wifi_text() call in {splash}\n")
+            return
+        log.write(f"⚠️ [PATCH] No known pattern found in {splash} — skipping\n")
 
 
 _PINNED_VERSION = Version("1.18.0")
