@@ -117,7 +117,7 @@ def update_pikaraoke():
             f"🔄 [LOG] Upgrading pikaraoke + yt-dlp @ {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
         )
         result = subprocess.run(
-            [str(VENV_BIN / "pip"), "install", "--upgrade", "pikaraoke==1.18.0", "yt-dlp"],
+            [str(VENV_BIN / "pip"), "install", "--upgrade", "pikaraoke", "yt-dlp"],
             stdout=log,
             stderr=subprocess.STDOUT,
         )
@@ -127,54 +127,18 @@ def update_pikaraoke():
             log.write("✅ [LOG] pip upgrade completed\n")
 
 
-def _find_splash_py():
-    matches = sorted(
-        (VENV_BIN.parent / "lib").glob(
-            "python*/site-packages/pikaraoke/routes/splash.py"
-        )
-    )
-    return matches[0] if matches else None
-
-
-def patch_pikaraoke():
-    """Patch pikaraoke splash.py to pass 'k.url' arg to get_raspi_wifi_text(). Idempotent."""
-    logfile = HOME / "pikaraoke_output.log"
-    target = "text = get_raspi_wifi_text(k.url)"
-    wrong_patch = "text = get_raspi_wifi_text(url)"
-    unpatched = "text = get_raspi_wifi_text()"
-    with open(logfile, "a") as log:
-        splash = _find_splash_py()
-        if splash is None:
-            log.write("⚠️ [PATCH] splash.py not found in venv — skipping\n")
-            return
-        text = splash.read_text(encoding="utf-8")
-        if target in text:
-            log.write(f"✅ [PATCH] {splash.name} already patched — no change needed\n")
-            return
-        if wrong_patch in text:
-            splash.write_text(text.replace(wrong_patch, target, 1), encoding="utf-8")
-            log.write(f"✅ [PATCH] Corrected wrong patch in {splash}\n")
-            return
-        if unpatched in text:
-            splash.write_text(text.replace(unpatched, target, 1), encoding="utf-8")
-            log.write(f"✅ [PATCH] Patched get_raspi_wifi_text() call in {splash}\n")
-            return
-        log.write(f"⚠️ [PATCH] No known pattern found in {splash} — skipping\n")
-
-
-_PINNED_VERSION = Version("1.18.0")
-
-
 def check_and_update():
-    """Upgrade if installed pikaraoke is below the pinned version. Returns True if update ran."""
+    """Check PyPI; upgrade only if a newer version exists. Returns True if update ran."""
     installed = get_installed_pikaraoke_version()
-    if installed < _PINNED_VERSION:
+    latest = get_latest_pikaraoke_version()
+    if latest is None:
+        return False  # PyPI unreachable — skip, don't block launch
+    if latest > installed:
         show_info(
-            f"🔄 Updating pikaraoke {installed} → {_PINNED_VERSION}\nUpdating before launch...",
+            f"🔄 Update available: {installed} → {latest}\nUpdating before launch...",
             duration=2,
         )
         update_pikaraoke()
-        patch_pikaraoke()
         return True
     return False
 
@@ -185,7 +149,6 @@ def main():
     while time.time() - start < INITIAL_WAIT:
         if check_wlan0_internet():
             check_and_update()
-            patch_pikaraoke()
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return
@@ -199,7 +162,6 @@ def main():
     while time.time() - start < EXTENDED_WAIT:
         if check_wlan0_internet():
             check_and_update()
-            patch_pikaraoke()
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return
