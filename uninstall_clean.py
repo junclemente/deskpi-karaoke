@@ -20,16 +20,21 @@ def parse_args():
     return parser.parse_args()
 
 
+_SONGS_DIR = Path.home() / "pikaraoke-songs"
+
+
 # --- Utility Functions ---
 def safe_remove(path: Path):
-    """Removes a file or directory if it exists — skips if 'pikaraoke-songs' is in path"""
+    """Removes a file or directory if it exists — never touches ~/pikaraoke-songs."""
     if not path.exists():
         return
-
-    if path.is_dir() and "pikaraoke-songs" in path.name.lower():
-        print(f"🚫 Skipping songs folder: {path}")
+    # Protect songs dir and anything inside it
+    try:
+        path.resolve().relative_to(_SONGS_DIR.resolve())
+        print(f"🚫 Skipping (protected songs folder): {path}")
         return
-
+    except ValueError:
+        pass
     try:
         if path.is_dir():
             shutil.rmtree(path)
@@ -71,8 +76,13 @@ def remove_logs():
 
 
 def remove_autostart_config():
-    print("🔍 Removing autostart config...")
-    safe_remove(Path("/etc/xdg/autostart/pikaraoke.desktop"))
+    print("🔍 Removing autostart config and helper scripts...")
+    home = Path.home()
+    safe_remove(home / ".config" / "autostart" / "pikaraoke.desktop")
+    safe_remove(home / "autostart_pikaraoke.py")
+    safe_remove(home / "pikaraoke_ui.py")
+    safe_remove(home / ".pk_aliases")
+    safe_remove(home / ".deskpi-karaoke")
 
 
 def remove_deskpi_drivers():
@@ -101,6 +111,10 @@ def remove_legacy_install_folder():
 def main():
     args = parse_args()
     print("\n🧼 PiKaraoke Legacy Clean Uninstaller Starting...\n")
+
+    songs_dir = Path.home() / "pikaraoke-songs"
+    if songs_dir.exists():
+        print(f"🎵 Songs folder will be preserved: {songs_dir}")
 
     remove_virtualenvs()
     remove_shortcuts_and_scripts()

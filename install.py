@@ -2,15 +2,16 @@
 # -*- coding: utf-8 -*-
 
 """
-PiKaraoke Installer (dev branch)
+PiKaraoke Installer
 - Idempotent
 - Creates ~/.venv-pikaraoke
 - Installs core packages (pikaraoke, packaging, yt-dlp)
-- Copies autostart + UI helpers
 - Installs pk_aliases and sources in shell rc files
 - Records installer state under ~/.deskpi-karaoke
+- Optionally installs DeskPi Lite 4 drivers (--deskpi, Pi 4 only)
 """
 
+import argparse
 import os
 import platform
 import shutil
@@ -24,8 +25,6 @@ VENV_DIR = HOME / ".venv-pikaraoke"
 STATE_DIR = HOME / ".deskpi-karaoke"
 REPO_ROOT = Path(__file__).resolve().parent
 ASSETS_DIR = REPO_ROOT / "assets"
-AUTOSTART_DIR = HOME / ".config" / "autostart"
-DESKTOP_FILE_PATH = AUTOSTART_DIR / "pikaraoke.desktop"
 
 PY_MIN = (3, 10)
 
@@ -45,13 +44,23 @@ APT_PKGS = [
     "nodejs",
     "npm",
     "curl",
-    "hostapd",   # captive-portal AP mode (run directly, not via service)
-    "dnsmasq",   # captive-portal DHCP + DNS redirect (run directly, not via service)
 ]
 
 
 def print_h(msg: str):
     print(f"\n=== {msg} ===")
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="PiKaraoke installer for Raspberry Pi"
+    )
+    parser.add_argument(
+        "--deskpi",
+        action="store_true",
+        help="Install DeskPi Lite 4 case drivers (Pi 4 only)",
+    )
+    return parser.parse_args()
 
 
 def run(cmd, check=True, cwd=None, env=None, capture_output=False, text=True):
@@ -79,7 +88,6 @@ def ensure_python_version():
 
 
 def check_platform():
-    # Soft checks for Pi + Bookworm Desktop
     print_h("Checking platform")
     uname = platform.uname()
     try:
@@ -101,9 +109,7 @@ def apt_install():
     if not apt:
         print("ℹ️  apt not found (non-Debian system?) Skipping system packages.")
         return
-    # Update
     cmd_update = f"{apt} update"
-    # Install base pkgs
     pkgs = " ".join(APT_PKGS)
     cmd_install = f"{apt} install -y {pkgs}"
     # Chromium name varies (chromium vs chromium-browser) — try best-effort
@@ -122,17 +128,48 @@ def apt_install():
     except Exception as e:
         print(f"⚠️  apt install step had issues: {e}. Continuing...")
 
+
+def install_deskpi() -> bool:
+    """Install DeskPi Lite 4 case drivers. Returns True if a reboot is required."""
+    print_h("Installing DeskPi Lite 4 drivers")
+    print("⚠️  DeskPi drivers are for Pi 4 only")
+
+    if Path("/usr/lib/deskpi").exists():
+        print("✅ DeskPi drivers already installed, skipping")
+        return False
+    try:
+        subprocess.run(
+            ["sudo", "systemctl", "is-active", "--quiet", "deskpi.service"],
+            check=True,
+            capture_output=True,
+        )
+        print("✅ DeskPi drivers already installed, skipping")
+        return False
+    except subprocess.CalledProcessError:
+        pass
+
+    clone_dir = Path("/tmp/deskpi_v1")
+    try:
+        run(
+            ["git", "clone", "https://github.com/DeskPi-Team/deskpi_v1.git", str(clone_dir)],
+            check=False,
+        )
+        run(f"sudo bash {clone_dir}/install.sh", check=False)
+    finally:
+        if clone_dir.exists():
+            shutil.rmtree(str(clone_dir))
+
+    return True
+
+
 def install_deno():
     print_h("Installing Deno (JS runtime for yt-dlp)")
 
-    # If already installed, skip
     if shutil.which("deno"):
         run(["deno", "--version"], check=False)
         print("✅ Deno already installed.")
         return
 
-    # Install Deno to ~/.deno/bin/deno
-    # Use bash -lc so ~ expands correctly and we can use pipes
     run('curl -fsSL https://deno.land/x/install/install.sh | sh', check=False)
 
     deno_bin = HOME / ".deno" / "bin"
@@ -144,7 +181,6 @@ def install_deno():
     else:
         print("⚠️ Deno install script ran but deno binary not found at ~/.deno/bin/deno")
 
-    # Ensure PATH for future login shells (helpful, but not sufficient for autostart)
     profile = HOME / ".profile"
     export_line = 'export PATH="$HOME/.deno/bin:$PATH"'
     try:
@@ -169,52 +205,11 @@ def ensure_venv():
 
 def copy_assets():
     print_h("Copying assets to $HOME")
-    AUTOSTART_DIR.mkdir(parents=True, exist_ok=True)
-    # autostart script & UI
-    shutil.copy2(ASSETS_DIR / "autostart_pikaraoke.py", HOME / "autostart_pikaraoke.py")
-    shutil.copy2(ASSETS_DIR / "pikaraoke_ui.py", HOME / "pikaraoke_ui.py")
-    # desktop entry (we regenerate Exec line to venv python)
-    desktop_src = ASSETS_DIR / "autostart_pikaraoke.desktop"
-    if desktop_src.exists():
-        # Load existing, replace Exec= line
-        content = desktop_src.read_text()
-        exec_line = f"Exec={VENV_DIR}/bin/python {HOME}/autostart_pikaraoke.py"
-        new = []
-        replaced = False
-        for line in content.splitlines():
-            if line.startswith("Exec="):
-                new.append(exec_line)
-                replaced = True
-            else:
-                new.append(line)
-        if not replaced:
-            new.append(exec_line)
-        DESKTOP_FILE_PATH.write_text("\n".join(new) + "\n")
-    else:
-        DESKTOP_FILE_PATH.write_text(
-            f"""[Desktop Entry]
-Name=Start PiKaraoke
-Comment=Launch PiKaraoke on boot
-Exec={VENV_DIR}/bin/python {HOME}/autostart_pikaraoke.py
-Icon=utilities-terminal
-Terminal=false
-Type=Application
-X-GNOME-Autostart-enabled=true
-"""
-        )
-    # pk_aliases
     aliases_src = ASSETS_DIR / "pk_aliases"
     if aliases_src.exists():
         shutil.copy2(aliases_src, HOME / ".pk_aliases")
         ensure_rc_sourced(HOME / ".bashrc")
         ensure_rc_sourced(HOME / ".zshrc")
-    # raspi_portal — WiFi captive-portal module used by autostart_pikaraoke.py
-    portal_src = ASSETS_DIR / "raspi_portal"
-    portal_dst = HOME / "raspi_portal"
-    if portal_src.exists():
-        if portal_dst.exists():
-            shutil.rmtree(portal_dst)
-        shutil.copytree(portal_src, portal_dst)
 
 
 def ensure_rc_sourced(rc_path: Path):
@@ -254,9 +249,9 @@ def record_state():
             (STATE_DIR / "VERSION").write_text(tag + "\n")
             print(f"main/tagged install; recorded VERSION {tag}")
         else:
-            # fallback — still write something so pk update logic has a file
             (STATE_DIR / "VERSION").write_text("0.0.0\n")
             print("No tag found; wrote VERSION 0.0.0")
+
 
 def install_ytdlp_config():
     print_h("Configuring yt-dlp defaults")
@@ -271,24 +266,30 @@ def install_ytdlp_config():
     )
     print(f"✅ Wrote {cfg_file}")
 
+
 def main():
-    print_h("PiKaraoke Installer (dev)")
+    args = parse_args()
+    print_h("PiKaraoke Installer")
     ensure_python_version()
     check_platform()
     apt_install()
+    reboot_required = install_deskpi() if args.deskpi else False
     install_deno()
-    py = ensure_venv()
+    ensure_venv()
     install_ytdlp_config()
     copy_assets()
     record_state()
 
     print_h("All done")
     print("• Venv       :", VENV_DIR)
-    print("• Autostart  :", DESKTOP_FILE_PATH)
     print("• State dir  :", STATE_DIR)
-    print(
-        "\nYou may need to log out and back in (or reboot) for autostart changes to take effect."
-    )
+
+    if reboot_required:
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        (STATE_DIR / ".reboot_required").touch()
+        print("\n♻️  Reboot required. Run: sudo reboot")
+    else:
+        print("\nYou may need to log out and back in for alias changes to take effect.")
 
 
 if __name__ == "__main__":
