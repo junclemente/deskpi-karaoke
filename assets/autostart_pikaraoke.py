@@ -124,6 +124,33 @@ def update_pikaraoke():
             log.write("✅ [LOG] pip upgrade completed\n")
 
 
+def _find_splash_py():
+    matches = sorted(
+        (VENV_BIN.parent / "lib").glob(
+            "python*/site-packages/pikaraoke/routes/splash.py"
+        )
+    )
+    return matches[0] if matches else None
+
+
+def patch_pikaraoke():
+    """Patch pikaraoke splash.py to pass 'url' arg to get_raspi_wifi_text(). Idempotent."""
+    logfile = HOME / "pikaraoke_output.log"
+    old = "text = get_raspi_wifi_text()"
+    new = "text = get_raspi_wifi_text(url)"
+    with open(logfile, "a") as log:
+        splash = _find_splash_py()
+        if splash is None:
+            log.write("⚠️ [PATCH] splash.py not found in venv — skipping\n")
+            return
+        text = splash.read_text(encoding="utf-8")
+        if old not in text:
+            log.write(f"✅ [PATCH] {splash.name} already patched — no change needed\n")
+            return
+        splash.write_text(text.replace(old, new, 1), encoding="utf-8")
+        log.write(f"✅ [PATCH] Patched get_raspi_wifi_text() call in {splash}\n")
+
+
 _PINNED_VERSION = Version("1.18.0")
 
 
@@ -136,6 +163,7 @@ def check_and_update():
             duration=2,
         )
         update_pikaraoke()
+        patch_pikaraoke()
         return True
     return False
 
@@ -146,6 +174,7 @@ def main():
     while time.time() - start < INITIAL_WAIT:
         if check_wlan0_internet():
             check_and_update()
+            patch_pikaraoke()
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return
@@ -159,6 +188,7 @@ def main():
     while time.time() - start < EXTENDED_WAIT:
         if check_wlan0_internet():
             check_and_update()
+            patch_pikaraoke()
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return
