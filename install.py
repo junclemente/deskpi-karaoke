@@ -42,9 +42,11 @@ APT_PKGS = [
     "python3-venv",
     "python3-pip",
     "ffmpeg",
-    "nodejs", 
+    "nodejs",
     "npm",
     "curl",
+    "hostapd",   # captive-portal AP mode (run directly, not via service)
+    "dnsmasq",   # captive-portal DHCP + DNS redirect (run directly, not via service)
 ]
 
 
@@ -206,6 +208,13 @@ X-GNOME-Autostart-enabled=true
         shutil.copy2(aliases_src, HOME / ".pk_aliases")
         ensure_rc_sourced(HOME / ".bashrc")
         ensure_rc_sourced(HOME / ".zshrc")
+    # raspi_portal — WiFi captive-portal module used by autostart_pikaraoke.py
+    portal_src = ASSETS_DIR / "raspi_portal"
+    portal_dst = HOME / "raspi_portal"
+    if portal_src.exists():
+        if portal_dst.exists():
+            shutil.rmtree(portal_dst)
+        shutil.copytree(portal_src, portal_dst)
 
 
 def ensure_rc_sourced(rc_path: Path):
