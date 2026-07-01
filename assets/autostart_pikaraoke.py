@@ -97,7 +97,7 @@ def update_pikaraoke():
             f"🔄 [LOG] Upgrading pikaraoke + yt-dlp @ {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
         )
         result = subprocess.run(
-            [str(VENV_BIN / "pip"), "install", "--upgrade", "pikaraoke", "yt-dlp"],
+            [str(VENV_BIN / "pip"), "install", "--upgrade", "pikaraoke==1.18.0", "yt-dlp"],
             stdout=log,
             stderr=subprocess.STDOUT,
         )
@@ -107,15 +107,15 @@ def update_pikaraoke():
             log.write("✅ [LOG] pip upgrade completed\n")
 
 
+_PINNED_VERSION = Version("1.18.0")
+
+
 def check_and_update():
-    """Check PyPI; upgrade only if a newer version exists. Returns True if update ran."""
+    """Upgrade if installed pikaraoke is below the pinned version. Returns True if update ran."""
     installed = get_installed_pikaraoke_version()
-    latest = get_latest_pikaraoke_version()
-    if latest is None:
-        return False  # PyPI unreachable — skip, don't block launch
-    if latest > installed:
+    if installed < _PINNED_VERSION:
         show_info(
-            f"🔄 Update available: {installed} → {latest}\nUpdating before launch...",
+            f"🔄 Updating pikaraoke {installed} → {_PINNED_VERSION}\nUpdating before launch...",
             duration=2,
         )
         update_pikaraoke()
