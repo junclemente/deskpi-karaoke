@@ -72,14 +72,11 @@ def launch_pikaraoke():
 def get_installed_pikaraoke_version():
     try:
         out = subprocess.check_output(
-            [str(VENV_BIN / "pip"), "show", "pikaraoke"], text=True
+            [str(VENV_BIN / "pikaraoke"), "--version"], text=True
         )
-        for line in out.splitlines():
-            if line.startswith("Version:"):
-                return Version(line.split(":", 1)[1].strip())
+        return Version(out.strip().lstrip("v"))
     except Exception:
-        pass
-    return Version("0.0.0")
+        return Version("0.0.0")
 
 
 def get_latest_pikaraoke_version(timeout=5):
@@ -110,41 +107,6 @@ def update_pikaraoke():
             log.write("✅ [LOG] pip upgrade completed\n")
 
 
-def _find_splash_py():
-    matches = sorted(
-        (VENV_BIN.parent / "lib").glob(
-            "python*/site-packages/pikaraoke/routes/splash.py"
-        )
-    )
-    return matches[0] if matches else None
-
-
-def patch_pikaraoke():
-    """Patch pikaraoke splash.py to pass 'k.url' arg to get_raspi_wifi_text(). Idempotent."""
-    logfile = HOME / "pikaraoke_output.log"
-    target = "text = get_raspi_wifi_text(k.url)"
-    wrong_patch = "text = get_raspi_wifi_text(url)"
-    unpatched = "text = get_raspi_wifi_text()"
-    with open(logfile, "a") as log:
-        splash = _find_splash_py()
-        if splash is None:
-            log.write("⚠️ [PATCH] splash.py not found in venv — skipping\n")
-            return
-        text = splash.read_text(encoding="utf-8")
-        if target in text:
-            log.write(f"✅ [PATCH] {splash.name} already patched — no change needed\n")
-            return
-        if wrong_patch in text:
-            splash.write_text(text.replace(wrong_patch, target, 1), encoding="utf-8")
-            log.write(f"✅ [PATCH] Corrected wrong patch in {splash}\n")
-            return
-        if unpatched in text:
-            splash.write_text(text.replace(unpatched, target, 1), encoding="utf-8")
-            log.write(f"✅ [PATCH] Patched get_raspi_wifi_text() call in {splash}\n")
-            return
-        log.write(f"⚠️ [PATCH] No known pattern found in {splash} — skipping\n")
-
-
 _PINNED_VERSION = Version("1.18.0")
 
 
@@ -157,7 +119,6 @@ def check_and_update():
             duration=2,
         )
         update_pikaraoke()
-        patch_pikaraoke()
         return True
     return False
 
@@ -168,7 +129,6 @@ def main():
     while time.time() - start < INITIAL_WAIT:
         if check_internet():
             check_and_update()
-            patch_pikaraoke()
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return
@@ -182,7 +142,6 @@ def main():
     while time.time() - start < EXTENDED_WAIT:
         if check_internet():
             check_and_update()
-            patch_pikaraoke()
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return
