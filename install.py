@@ -60,6 +60,11 @@ def parse_args():
         action="store_true",
         help="Install DeskPi Lite 4 case drivers (Pi 4 only)",
     )
+    parser.add_argument(
+        "--raspi-portal",
+        action="store_true",
+        help="Install raspi-portal WiFi management service",
+    )
     return parser.parse_args()
 
 
@@ -160,6 +165,34 @@ def install_deskpi() -> bool:
             shutil.rmtree(str(clone_dir))
 
     return True
+
+
+def install_raspi_portal():
+    """Clone and install raspi-portal WiFi management service."""
+    print_h("Installing raspi-portal")
+
+    if Path("/etc/systemd/system/raspi-portal.service").exists():
+        print("✅ raspi-portal already installed, skipping")
+        return
+
+    clone_dir = Path("/tmp/raspi-portal")
+    try:
+        run(
+            ["git", "clone", "https://github.com/junclemente/raspi-portal.git", str(clone_dir)],
+            check=False,
+        )
+        run(["sudo", "python3", str(clone_dir / "install.py")], check=False)
+    finally:
+        if clone_dir.exists():
+            shutil.rmtree(str(clone_dir))
+
+    # raspi-portal takes over boot-launch responsibility
+    autostart = HOME / ".config" / "autostart" / "pikaraoke.desktop"
+    if autostart.exists():
+        autostart.unlink()
+        print("🗑️  Removed LXDE autostart — raspi-portal handles launch now")
+
+    print("ℹ️  raspi-portal will handle PiKaraoke launch on boot")
 
 
 def install_deno():
@@ -274,6 +307,8 @@ def main():
     check_platform()
     apt_install()
     reboot_required = install_deskpi() if args.deskpi else False
+    if args.raspi_portal:
+        install_raspi_portal()
     install_deno()
     ensure_venv()
     install_ytdlp_config()
