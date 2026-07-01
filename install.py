@@ -35,7 +35,7 @@ PKG_CORE = [
     "wheel",
     "packaging>=24.0",
     "yt-dlp",
-    "pikaraoke",  # main app
+    "pikaraoke==1.18.0",  # pinned: 1.19.0 has breaking splash screen bug
 ]
 
 APT_PKGS = [
