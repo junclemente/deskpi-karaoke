@@ -137,21 +137,23 @@ def apt_install():
 def install_deskpi() -> bool:
     """Install DeskPi Lite 4 case drivers. Returns True if a reboot is required."""
     print_h("Installing DeskPi Lite 4 drivers")
-    print("⚠️  DeskPi drivers are for Pi 4 only")
 
-    if Path("/usr/lib/deskpi").exists():
-        print("✅ DeskPi drivers already installed, skipping")
-        return False
     try:
+        model = Path("/proc/device-tree/model").read_text()
+    except Exception:
+        model = ""
+    if "Raspberry Pi 4" not in model:
+        print("⚠️  --deskpi is for Pi 4 only. Skipping DeskPi driver install.")
+        return False
+
+    already_installed = Path("/usr/lib/deskpi").exists() or (
         subprocess.run(
-            ["sudo", "systemctl", "is-active", "--quiet", "deskpi.service"],
-            check=True,
-            capture_output=True,
-        )
+            ["systemctl", "is-enabled", "deskpi.service"], capture_output=True
+        ).returncode == 0
+    )
+    if already_installed:
         print("✅ DeskPi drivers already installed, skipping")
         return False
-    except subprocess.CalledProcessError:
-        pass
 
     clone_dir = Path("/tmp/deskpi_v1")
     try:
