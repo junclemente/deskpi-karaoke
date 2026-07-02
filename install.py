@@ -240,6 +240,27 @@ def ensure_venv():
 
 def copy_assets():
     print_h("Copying assets to $HOME")
+    # LXDE autostart — rewrites Exec= to point at the venv pikaraoke binary
+    autostart_dir = HOME / ".config" / "autostart"
+    autostart_dir.mkdir(parents=True, exist_ok=True)
+    desktop_src = ASSETS_DIR / "autostart_pikaraoke.desktop"
+    desktop_dst = autostart_dir / "pikaraoke.desktop"
+    if desktop_src.exists():
+        content = desktop_src.read_text()
+        exec_line = f"Exec={VENV_DIR}/bin/pikaraoke"
+        lines = []
+        replaced = False
+        for line in content.splitlines():
+            if line.startswith("Exec="):
+                lines.append(exec_line)
+                replaced = True
+            else:
+                lines.append(line)
+        if not replaced:
+            lines.append(exec_line)
+        desktop_dst.write_text("\n".join(lines) + "\n")
+        print(f"✅ Wrote {desktop_dst}")
+    # pk_aliases
     aliases_src = ASSETS_DIR / "pk_aliases"
     if aliases_src.exists():
         shutil.copy2(aliases_src, HOME / ".pk_aliases")
