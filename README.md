@@ -66,12 +66,8 @@ deskpi-karaoke/
 │  └─ pk_aliases                   # helper terminal aliases
 ├─ CHANGELOG.md
 ├─ LICENSE
-└─ README.md
-```
-
-**Planned**
-```
-raspi_portal/   # NetworkManager + captive portal for first-time Wi-Fi setup
+├─ README.md
+└─ VERSION                    # current project version (major.minor.patch)
 ```
 
 ---
