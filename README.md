@@ -61,7 +61,6 @@ deskpi-karaoke/
 ├─ uninstall_clean.py        # full clean uninstaller
 ├─ assets/
 │  ├─ autostart_pikaraoke.py       # waits for internet + launches PiKaraoke
-│  ├─ autostart_pikaraoke.desktop  # LXDE autostart entry
 │  ├─ pikaraoke_ui.py              # Tk-based notifications
 │  └─ pk_aliases                   # helper terminal aliases
 ├─ CHANGELOG.md

@@ -171,26 +171,9 @@ def copy_assets():
     # autostart script & UI
     shutil.copy2(ASSETS_DIR / "autostart_pikaraoke.py", HOME / "autostart_pikaraoke.py")
     shutil.copy2(ASSETS_DIR / "pikaraoke_ui.py", HOME / "pikaraoke_ui.py")
-    # desktop entry (we regenerate Exec line to venv python)
-    desktop_src = ASSETS_DIR / "autostart_pikaraoke.desktop"
-    if desktop_src.exists():
-        # Load existing, replace Exec= line
-        content = desktop_src.read_text()
-        exec_line = f"Exec={VENV_DIR}/bin/python {HOME}/autostart_pikaraoke.py"
-        new = []
-        replaced = False
-        for line in content.splitlines():
-            if line.startswith("Exec="):
-                new.append(exec_line)
-                replaced = True
-            else:
-                new.append(line)
-        if not replaced:
-            new.append(exec_line)
-        DESKTOP_FILE_PATH.write_text("\n".join(new) + "\n")
-    else:
-        DESKTOP_FILE_PATH.write_text(
-            f"""[Desktop Entry]
+    # desktop entry
+    DESKTOP_FILE_PATH.write_text(
+        f"""[Desktop Entry]
 Name=Start PiKaraoke
 Comment=Launch PiKaraoke on boot
 Exec={VENV_DIR}/bin/python {HOME}/autostart_pikaraoke.py
@@ -199,7 +182,7 @@ Terminal=false
 Type=Application
 X-GNOME-Autostart-enabled=true
 """
-        )
+    )
     # pk_aliases
     aliases_src = ASSETS_DIR / "pk_aliases"
     if aliases_src.exists():
