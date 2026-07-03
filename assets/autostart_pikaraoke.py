@@ -135,9 +135,6 @@ def update_pikaraoke(target_version):
         log.write("✅ [LOG] pip upgrade completed\n")
 
 
-_PINNED_VERSION = Version("1.18.0")
-
-
 def check_and_update():
     """Fetch the latest version from PyPI and upgrade if local version is outdated."""
     installed = get_installed_pikaraoke_version()
