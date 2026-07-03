@@ -35,6 +35,10 @@ from pikaraoke_ui import show_error, show_info
 CHECK_INTERVAL = 5
 INITIAL_WAIT = 10
 EXTENDED_WAIT = 30
+UPDATE_TIMEOUT = 180
+
+STATE_DIR = HOME / ".deskpi-karaoke"
+PIKARAOKE_VERSION_FILE = STATE_DIR / "PIKARAOKE_VERSION"
 
 
 def check_internet(timeout=3):
@@ -92,6 +96,15 @@ def get_latest_pikaraoke_version(timeout=5):
         return None
 
 
+def store_pikaraoke_version(version):
+    """Persist the currently-installed pikaraoke version so it's readable without a venv pip call."""
+    try:
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        PIKARAOKE_VERSION_FILE.write_text(f"{version}\n")
+    except Exception:
+        pass
+
+
 def update_pikaraoke(target_version):
     """Upgrade pikaraoke and yt-dlp in the venv."""
     logfile = HOME / "pikaraoke_output.log"
@@ -99,23 +112,25 @@ def update_pikaraoke(target_version):
         log.write(
             f"🔄 [LOG] Upgrading pikaraoke to {target_version} + yt-dlp @ {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
         )
-
-    # Dynamically inject the fetched target_version
-    result = subprocess.run(
-        [
-            str(VENV_BIN / "pip"),
-            "install",
-            "--upgrade",
-            f"pikaraoke=={target_version}",
-            "yt-dlp",
-        ],
-        stdout=log,
-        stderr=subprocess.STDOUT,
-    )
-    if result.returncode != 0:
-        log.write("⚠️ [LOG] pip upgrade exited with non-zero status\n")
-    else:
-        log.write("✅ [LOG] pip upgrade completed\n")
+        try:
+            result = subprocess.run(
+                [
+                    str(VENV_BIN / "pip"),
+                    "install",
+                    "--upgrade",
+                    f"pikaraoke=={target_version}",
+                    "yt-dlp",
+                ],
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                timeout=UPDATE_TIMEOUT,
+            )
+            if result.returncode != 0:
+                log.write("⚠️ [LOG] pip upgrade exited with non-zero status\n")
+            else:
+                log.write("✅ [LOG] pip upgrade completed\n")
+        except subprocess.TimeoutExpired:
+            log.write(f"❌ [LOG] pip upgrade timed out after {UPDATE_TIMEOUT}s\n")
 
 
 def check_and_update():
@@ -126,6 +141,7 @@ def check_and_update():
     # If PyPI is down or unreachable, gracefully skip updating and launch anyway
     if latest is None:
         print("⚠️ Unable to fetch latest version from PyPI. Skipping update check.")
+        store_pikaraoke_version(installed)
         return False
 
     if installed < latest:
@@ -134,9 +150,22 @@ def check_and_update():
             duration=2,
         )
         update_pikaraoke(latest)  # Pass the target version down
+        installed = get_installed_pikaraoke_version()  # re-check actual result
+        store_pikaraoke_version(installed)
         return True
 
+    store_pikaraoke_version(installed)
     return False
+
+
+def safe_check_and_update():
+    """Run check_and_update() without letting any failure block the launch below."""
+    logfile = HOME / "pikaraoke_output.log"
+    try:
+        check_and_update()
+    except Exception as e:
+        with open(logfile, "a") as log:
+            log.write(f"❌ [LOG] check_and_update() failed: {e}\n")
 
 
 def main():
@@ -144,7 +173,7 @@ def main():
     start = time.time()
     while time.time() - start < INITIAL_WAIT:
         if check_internet():
-            check_and_update()
+            safe_check_and_update()
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return
@@ -157,7 +186,7 @@ def main():
     start = time.time()
     while time.time() - start < EXTENDED_WAIT:
         if check_internet():
-            check_and_update()
+            safe_check_and_update()
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return

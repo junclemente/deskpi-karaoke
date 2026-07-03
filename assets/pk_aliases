@@ -95,6 +95,7 @@ pk() {
       [ -f "$PK_VER_FILE" ] && echo "📄 Installed (recorded main): v$(cat "$PK_VER_FILE")" || echo "📄 Installed (recorded main): unknown"
       echo "🏷️ Latest tag: $(git -C "$PK_HOME" fetch --tags >/dev/null 2>&1; git -C "$PK_HOME" tag --sort=-v:refname | head -n1)"
       echo "🔧 Last applied dev SHA: $( [ -f "$PK_LAST_SHA_DEV" ] && cat "$PK_LAST_SHA_DEV" || echo 'unknown')"
+      echo "🎤 PiKaraoke package: $( [ -f "$PK_STATE/PIKARAOKE_VERSION" ] && cat "$PK_STATE/PIKARAOKE_VERSION" || echo 'unknown')"
       ;;
 
     reboot) echo "♻️ Rebooting Raspberry Pi…"; sudo reboot ;;
