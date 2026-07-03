@@ -109,37 +109,53 @@ def get_latest_pikaraoke_version(timeout=5):
         return None
 
 
-def update_pikaraoke():
-    """Upgrade pikaraoke and yt-dlp in the venv. Runs synchronously before launch."""
+def update_pikaraoke(target_version):
+    """Upgrade pikaraoke and yt-dlp in the venv."""
     logfile = HOME / "pikaraoke_output.log"
     with open(logfile, "a") as log:
         log.write(
-            f"🔄 [LOG] Upgrading pikaraoke + yt-dlp @ {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"🔄 [LOG] Upgrading pikaraoke to {target_version} + yt-dlp @ {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
         )
-        result = subprocess.run(
-            [str(VENV_BIN / "pip"), "install", "--upgrade", "pikaraoke==1.18.0", "yt-dlp"],
-            stdout=log,
-            stderr=subprocess.STDOUT,
-        )
-        if result.returncode != 0:
-            log.write("⚠️ [LOG] pip upgrade exited with non-zero status\n")
-        else:
-            log.write("✅ [LOG] pip upgrade completed\n")
+
+    # Dynamically inject the fetched target_version
+    result = subprocess.run(
+        [
+            str(VENV_BIN / "pip"),
+            "install",
+            "--upgrade",
+            f"pikaraoke=={target_version}",
+            "yt-dlp",
+        ],
+        stdout=log,
+        stderr=subprocess.STDOUT,
+    )
+    if result.returncode != 0:
+        log.write("⚠️ [LOG] pip upgrade exited with non-zero status\n")
+    else:
+        log.write("✅ [LOG] pip upgrade completed\n")
 
 
 _PINNED_VERSION = Version("1.18.0")
 
 
 def check_and_update():
-    """Upgrade if installed pikaraoke is below the pinned version. Returns True if update ran."""
+    """Fetch the latest version from PyPI and upgrade if local version is outdated."""
     installed = get_installed_pikaraoke_version()
-    if installed < _PINNED_VERSION:
+    latest = get_latest_pikaraoke_version()
+
+    # If PyPI is down or unreachable, gracefully skip updating and launch anyway
+    if latest is None:
+        print("⚠️ Unable to fetch latest version from PyPI. Skipping update check.")
+        return False
+
+    if installed < latest:
         show_info(
-            f"🔄 Updating pikaraoke {installed} → {_PINNED_VERSION}\nUpdating before launch...",
+            f"🔄 Updating pikaraoke {installed} → {latest}\nUpdating before launch...",
             duration=2,
         )
-        update_pikaraoke()
+        update_pikaraoke(latest)  # Pass the target version down
         return True
+
     return False
 
 
