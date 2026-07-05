@@ -2,9 +2,9 @@
 ~/.deskpi-karaoke/state.toml."""
 
 import logging
-import tomllib
-from typing import Any, Optional
+from typing import Optional
 
+from assets import state_toml
 from src import constants
 from src.shell import log_section, run
 
@@ -36,33 +36,12 @@ def _state_path():
 
 def load_state() -> dict:
     """Read ~/.deskpi-karaoke/state.toml, returning {} if it doesn't exist yet."""
-    path = _state_path()
-    if not path.exists():
-        return {}
-    with path.open("rb") as f:
-        return tomllib.load(f).get("state", {})
-
-
-def _format_toml_value(value: Any) -> str:
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    return f'"{value}"'
+    return state_toml.load_state(_state_path())
 
 
 def save_state(updates: dict) -> None:
-    """Merge `updates` into the existing state and rewrite state.toml.
-
-    Hand-rolled writer instead of a library: tomllib (stdlib) is read-only,
-    and every value here is a plain string/bool, so a flat [state] block is
-    trivial to serialize correctly without a dependency.
-    """
-    constants.STATE_DIR.mkdir(parents=True, exist_ok=True)
-    data = load_state()
-    data.update(updates)
-    lines = ["[state]"]
-    for key, value in data.items():
-        lines.append(f"{key} = {_format_toml_value(value)}")
-    _state_path().write_text("\n".join(lines) + "\n")
+    """Merge `updates` into the existing state and rewrite state.toml."""
+    state_toml.save_state(_state_path(), updates)
 
 
 def _remove_legacy_state_files():

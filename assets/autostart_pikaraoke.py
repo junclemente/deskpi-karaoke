@@ -5,7 +5,6 @@ import os
 import socket
 import subprocess
 import time
-import tomllib
 import urllib.request
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -50,37 +49,14 @@ except Exception:
 
 
 from pikaraoke_ui import show_error, show_info
+from state_toml import save_state
 
 CHECK_INTERVAL = 5
 INITIAL_WAIT = 10
 EXTENDED_WAIT = 30
 UPDATE_TIMEOUT = 180
 
-STATE_DIR = HOME / ".deskpi-karaoke"
-STATE_FILE = STATE_DIR / "state.toml"
-
-
-# Standalone duplicate of src/state.py's flat-TOML format: this script is
-# copied out to $HOME and run without the repo/src package alongside it, so
-# it can't import src.state and instead carries its own tiny read/write pair
-# for the one field it owns (pikaraoke_version).
-def _load_state() -> dict:
-    if not STATE_FILE.exists():
-        return {}
-    with STATE_FILE.open("rb") as f:
-        return tomllib.load(f).get("state", {})
-
-
-def _save_state_field(key, value):
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    data = _load_state()
-    data[key] = value
-    lines = ["[state]"]
-    for k, v in data.items():
-        lines.append(
-            f'{k} = "{v}"' if not isinstance(v, bool) else f"{k} = {str(v).lower()}"
-        )
-    STATE_FILE.write_text("\n".join(lines) + "\n")
+STATE_FILE = HOME / ".deskpi-karaoke" / "state.toml"
 
 
 def check_internet(timeout=3):
@@ -138,7 +114,7 @@ def get_latest_pikaraoke_version(timeout=5):
 def store_pikaraoke_version(version):
     """Persist the currently-installed pikaraoke version, readable without a venv pip call."""
     try:
-        _save_state_field("pikaraoke_version", str(version))
+        save_state(STATE_FILE, {"pikaraoke_version": str(version)})
     except Exception:
         pass
 

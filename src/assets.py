@@ -13,13 +13,16 @@ logger = logging.getLogger(__name__)
 def copy_assets():
     log_section("Copying assets to $HOME")
     constants.AUTOSTART_DIR.mkdir(parents=True, exist_ok=True)
-    # autostart script & UI
+    # autostart script, UI, and the shared state-file helper it imports
     shutil.copy2(
         constants.ASSETS_DIR / "autostart_pikaraoke.py",
         constants.HOME / "autostart_pikaraoke.py",
     )
     shutil.copy2(
         constants.ASSETS_DIR / "pikaraoke_ui.py", constants.HOME / "pikaraoke_ui.py"
+    )
+    shutil.copy2(
+        constants.ASSETS_DIR / "state_toml.py", constants.HOME / "state_toml.py"
     )
     # desktop entry
     constants.DESKTOP_FILE_PATH.write_text(

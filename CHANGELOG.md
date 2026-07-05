@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.5.1] - 2026-07-05
+
+### 🛠 Improvements
+
+- De-duplicated the flat-TOML state read/write logic that previously existed
+  as two hand-kept-in-sync copies (`src/state.py` and an embedded copy in
+  `assets/autostart_pikaraoke.py`). Both now use a single shared
+  `assets/state_toml.py`: `src/state.py` imports it directly from the repo,
+  and `copy_assets()` now also copies it to `$HOME` alongside
+  `autostart_pikaraoke.py`/`pikaraoke_ui.py`, which imports it as a
+  same-directory module — same pattern already used for `pikaraoke_ui`.
+  No behavior change; removes a format-drift risk between the two copies.
+
 ## [v0.5.0] - 2026-07-05
 
 ### 🚀 New Features

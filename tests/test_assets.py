@@ -39,6 +39,7 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
     assets_dir.mkdir()
     (assets_dir / "autostart_pikaraoke.py").write_text("# autostart stub")
     (assets_dir / "pikaraoke_ui.py").write_text("# ui stub")
+    (assets_dir / "state_toml.py").write_text("# state_toml stub")
     (assets_dir / "pk_aliases").write_text("# aliases stub")
 
     venv_dir = home / ".venv-pikaraoke"
@@ -55,6 +56,7 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
 
     assert (home / "autostart_pikaraoke.py").read_text() == "# autostart stub"
     assert (home / "pikaraoke_ui.py").read_text() == "# ui stub"
+    assert (home / "state_toml.py").read_text() == "# state_toml stub"
     assert (home / ".pk_aliases").read_text() == "# aliases stub"
 
     desktop_content = desktop_file.read_text()
