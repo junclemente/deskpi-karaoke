@@ -24,3 +24,9 @@ Once installed, maintenance and testing should be run using the built-in aliases
 - **State Management:** Installer state, version tracking, and applied git SHAs must be read from/written to the `~/.deskpi-karaoke/` state directory.
 - **Network Awareness:** Any autostart or launch mechanisms must gracefully check for internet connectivity first and leverage `assets/pikaraoke_ui.py` (Tkinter UI notifications) to inform the user if offline before spawning the PiKaraoke background process.
 - **Branch Strategy:** Production releases are gated strictly by Git tags on the `main` branch. Active, experimental development belongs exclusively on the `dev` branch.
+
+## Versioning & Changelog
+- The repo-root `VERSION` file is the source-of-truth project version (semver). It is distinct from `~/.deskpi-karaoke/VERSION`, the installer *state* file written by `record_state()` from `git describe --tags` on `main`.
+- Any non-trivial commit to `dev` (new feature, fix, or structural refactor) should bump `VERSION` (patch for internal/refactor changes, minor for user-facing features, per semver) and add a matching entry at the top of `CHANGELOG.md`.
+- Follow the existing `CHANGELOG.md` format: `## [vX.Y.Z] - YYYY-MM-DD` heading, then relevant `### 🚀 New Features` / `### 🛠 Improvements` / `### 🐛 Fixes` / `### 📝 Notes` subsections — omit sections that don't apply.
+- Tags on `main` (which gate releases per Branch Strategy above) should match the `CHANGELOG.md`/`VERSION` value being released.

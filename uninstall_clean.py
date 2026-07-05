@@ -7,7 +7,7 @@ import argparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from src.shell import safe_remove, stop_service
+from src.shell import safe_remove, stop_service  # noqa: E402
 
 
 # --- Parse CLI Arguments ---
@@ -67,7 +67,8 @@ def remove_legacy_install_folder():
     if pikaraoke_dir.exists():
         if "pikaraoke-songs" in [p.name.lower() for p in pikaraoke_dir.iterdir()]:
             print(
-                f"🚫 Skipping legacy folder (contains 'pikaraoke-songs'): {pikaraoke_dir}"
+                "🚫 Skipping legacy folder (contains 'pikaraoke-songs'): "
+                f"{pikaraoke_dir}"
             )
         else:
             safe_remove(pikaraoke_dir)

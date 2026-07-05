@@ -1,6 +1,7 @@
 # 🎤 PiKaraoke Installer for Raspberry Pi 4 + DeskPi Lite 4
 
 ![Version](https://img.shields.io/github/v/tag/junclemente/deskpi-karaoke?label=version&style=flat-square)
+![Lint and Test](https://github.com/junclemente/deskpi-karaoke/actions/workflows/lint-and-test.yml/badge.svg)
 
 > **NOTE**  
 > This project is an active work in progress. Development happens on the **`dev` branch**.  
@@ -56,13 +57,27 @@ It focuses on:
 
 ```
 deskpi-karaoke/
-├─ install.py                # main installer
+├─ install.py                # thin installer entry point
 ├─ uninstall.py              # standard uninstaller
 ├─ uninstall_clean.py        # full clean uninstaller
+├─ src/                      # installer orchestration & utility modules
+│  ├─ cli.py                       # orchestrates the install steps
+│  ├─ constants.py                 # shared paths & config
+│  ├─ shell.py                     # subprocess/file-removal helpers
+│  ├─ system.py                    # platform checks, apt install
+│  ├─ network.py                   # Deno + yt-dlp setup
+│  ├─ venv.py                      # virtualenv creation
+│  ├─ assets.py                    # asset copying, shell rc patching
+│  └─ state.py                     # git introspection, state recording
+├─ tests/                    # pytest suite for src/
 ├─ assets/
 │  ├─ autostart_pikaraoke.py       # waits for internet + launches PiKaraoke
 │  ├─ pikaraoke_ui.py              # Tk-based notifications
 │  └─ pk_aliases                   # helper terminal aliases
+├─ .github/workflows/        # CI: lint (black/flake8) + pytest
+├─ requirements-dev.txt      # pytest, black, flake8 (dev-only, not installed on the Pi)
+├─ pyproject.toml            # black + pytest config
+├─ .flake8                   # flake8 config
 ├─ CHANGELOG.md
 ├─ LICENSE
 ├─ README.md
@@ -196,6 +211,30 @@ Full clean uninstall (preserves song library):
 ```bash
 python3 uninstall_clean.py
 ```
+
+---
+
+## 🧪 Testing & Linting
+
+The `src/` package has a `pytest` suite that runs safely on any machine (no real
+Raspberry Pi, `apt`/`sudo`, or `$HOME` dotfiles required — filesystem paths and
+subprocess calls are mocked). Formatting and lint checks run via `black` and
+`flake8`. All three run automatically in CI on every push/PR to `main` and `dev`
+(see the badge above), and can be run locally:
+
+```bash
+pip install -r requirements-dev.txt
+
+# run the test suite
+pytest -q
+
+# check formatting (black) and lint (flake8)
+black --check .
+flake8 .
+```
+
+`requirements-dev.txt` is only for local development and CI — it is never
+installed on the Raspberry Pi itself; `install.py` and `src/` remain stdlib-only.
 
 ---
 

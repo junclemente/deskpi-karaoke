@@ -4,14 +4,15 @@ import platform
 import shutil
 import sys
 
-from src.constants import APT_PKGS, PY_MIN
+from src import constants
 from src.shell import print_h, run
 
 
 def ensure_python_version():
-    if sys.version_info < PY_MIN:
+    if sys.version_info < constants.PY_MIN:
         raise SystemExit(
-            f"❌ Python {PY_MIN[0]}.{PY_MIN[1]}+ required. Found {sys.version.split()[0]}"
+            f"❌ Python {constants.PY_MIN[0]}.{constants.PY_MIN[1]}+ required. "
+            f"Found {sys.version.split()[0]}"
         )
 
 
@@ -41,7 +42,7 @@ def apt_install():
     # Update
     cmd_update = f"{apt} update"
     # Install base pkgs
-    pkgs = " ".join(APT_PKGS)
+    pkgs = " ".join(constants.APT_PKGS)
     cmd_install = f"{apt} install -y {pkgs}"
     # Chromium name varies (chromium vs chromium-browser) — try best-effort
     try_chromium = (

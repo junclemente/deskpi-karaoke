@@ -27,7 +27,7 @@ def run(cmd, check=True, cwd=None, env=None, capture_output=False, text=True):
 
 
 def safe_remove(path: Path):
-    """Removes a file or directory if it exists — skips if 'pikaraoke-songs' is in path"""
+    """Removes a file/dir if it exists — skips paths containing 'pikaraoke-songs'."""
     if not path.exists():
         return
 

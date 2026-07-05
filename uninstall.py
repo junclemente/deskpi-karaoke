@@ -7,7 +7,7 @@ import argparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from src.shell import safe_remove, stop_service
+from src.shell import safe_remove, stop_service  # noqa: E402
 
 
 # --- Parse CLI Arguments ---

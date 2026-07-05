@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.4.7] - 2026-07-05
+
+### 🛠 Improvements
+
+- Added a `pytest` suite under `tests/` covering every `src/` module (35 tests):
+  platform checks, apt/Deno/venv orchestration, yt-dlp config, asset copying
+  and shell-rc patching, git/state-file handling, and CLI exit-code mapping.
+  Tests run safely on any machine — no real Pi, `apt`/`sudo`, or `$HOME`
+  dotfiles touched; filesystem paths and subprocess calls are mocked.
+- `src/*.py` now do `from src import constants` instead of importing
+  individual names, so tests (and future code) can patch `src.constants.X`
+  in one place. Import-style only — no behavior change.
+- Added `black` + `flake8` lint tooling (`requirements-dev.txt`,
+  `pyproject.toml`, `.flake8`), dev-only and separate from the installer's
+  stdlib-only runtime dependencies.
+- Added `.github/workflows/lint-and-test.yml`: runs `black --check`,
+  `flake8`, and `pytest` on every push/PR to `main` and `dev` (Python 3.10
+  and 3.12).
+- Updated `README.md` with the new `src/`/`tests/` project structure, a CI
+  status badge, and a **Testing & Linting** section.
+
 ## [v0.4.6] - 2026-07-05
 
 ### 🛠 Improvements

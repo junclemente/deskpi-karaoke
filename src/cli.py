@@ -2,8 +2,8 @@
 
 import sys
 
+from src import constants
 from src.assets import copy_assets
-from src.constants import DESKTOP_FILE_PATH, STATE_DIR, VENV_DIR
 from src.network import install_deno, install_ytdlp_config
 from src.shell import print_h
 from src.state import record_state
@@ -23,11 +23,12 @@ def main():
     record_state()
 
     print_h("All done")
-    print("• Venv       :", VENV_DIR)
-    print("• Autostart  :", DESKTOP_FILE_PATH)
-    print("• State dir  :", STATE_DIR)
+    print("• Venv       :", constants.VENV_DIR)
+    print("• Autostart  :", constants.DESKTOP_FILE_PATH)
+    print("• State dir  :", constants.STATE_DIR)
     print(
-        "\nYou may need to log out and back in (or reboot) for autostart changes to take effect."
+        "\nYou may need to log out and back in (or reboot) for autostart "
+        "changes to take effect."
     )
 
 
