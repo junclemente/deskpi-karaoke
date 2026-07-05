@@ -20,7 +20,7 @@ def test_ensure_python_version_raises_when_too_old(monkeypatch):
         system.ensure_python_version()
 
 
-def test_check_platform_recognizes_bookworm_pi(monkeypatch, capsys):
+def test_check_platform_recognizes_bookworm_pi(monkeypatch, caplog):
     fake_uname = Mock(system="Linux", release="6.1.0", machine="aarch64")
     monkeypatch.setattr(system.platform, "uname", lambda: fake_uname)
     # machine alone doesn't say "raspberry" - osrel needs to mention it
@@ -29,14 +29,14 @@ def test_check_platform_recognizes_bookworm_pi(monkeypatch, capsys):
         mock_open(read_data="ID=debian\nVERSION_CODENAME=bookworm\nraspberry pi\n"),
     )
 
-    system.check_platform()
+    with caplog.at_level("INFO", logger="src.system"):
+        system.check_platform()
 
-    out = capsys.readouterr().out
-    assert "Non-Bookworm" not in out
-    assert "does not appear to be a Raspberry Pi" not in out
+    assert "Non-Bookworm" not in caplog.text
+    assert "does not appear to be a Raspberry Pi" not in caplog.text
 
 
-def test_check_platform_warns_on_non_bookworm_non_pi(monkeypatch, capsys):
+def test_check_platform_warns_on_non_bookworm_non_pi(monkeypatch, caplog):
     fake_uname = Mock(system="Linux", release="6.8.0", machine="x86_64")
     monkeypatch.setattr(system.platform, "uname", lambda: fake_uname)
 
@@ -45,11 +45,11 @@ def test_check_platform_warns_on_non_bookworm_non_pi(monkeypatch, capsys):
 
     monkeypatch.setattr("builtins.open", raise_not_found)
 
-    system.check_platform()
+    with caplog.at_level("INFO", logger="src.system"):
+        system.check_platform()
 
-    out = capsys.readouterr().out
-    assert "Non-Bookworm OS detected" in out
-    assert "does not appear to be a Raspberry Pi" in out
+    assert "Non-Bookworm OS detected" in caplog.text
+    assert "does not appear to be a Raspberry Pi" in caplog.text
 
 
 def test_apt_install_skips_when_apt_missing(monkeypatch):

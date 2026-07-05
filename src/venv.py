@@ -3,11 +3,11 @@
 import sys
 
 from src import constants
-from src.shell import print_h, run
+from src.shell import log_section, run
 
 
 def ensure_venv():
-    print_h("Ensuring Python venv")
+    log_section("Ensuring Python venv")
     if not constants.VENV_DIR.exists():
         run([sys.executable, "-m", "venv", str(constants.VENV_DIR)])
     py = constants.VENV_DIR / "bin" / "python"

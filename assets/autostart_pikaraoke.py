@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 import json
+import logging
 import os
 import socket
 import subprocess
 import time
+import tomllib
 import urllib.request
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 # Ensure venv + deno binaries are available in PATH (pikaraoke, yt-dlp, deno)
@@ -14,6 +17,22 @@ DENO_BIN = HOME / ".deno" / "bin"
 
 base_path = os.environ.get("PATH", "")
 os.environ["PATH"] = f"{VENV_BIN}:{DENO_BIN}:/usr/local/bin:/usr/bin:/bin:{base_path}"
+
+# Two log files, two rotation mechanisms:
+# - OUTPUT_LOG_FILE: the pikaraoke subprocess's own raw stdout/stderr, written
+#   directly by that child process via an inherited fd — rotated externally
+#   by system logrotate (see src/logs.py), since this script can't safely
+#   rotate a file another process is writing into.
+# - LAUNCHER_LOG_FILE: this script's own bookkeeping messages — only this
+#   process writes here, so a plain RotatingFileHandler is safe.
+OUTPUT_LOG_FILE = HOME / "pikaraoke_output.log"
+LAUNCHER_LOG_FILE = HOME / "pikaraoke_launcher.log"
+
+logger = logging.getLogger("pikaraoke_autostart")
+logger.setLevel(logging.INFO)
+_handler = RotatingFileHandler(LAUNCHER_LOG_FILE, maxBytes=2_000_000, backupCount=3)
+_handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+logger.addHandler(_handler)
 
 
 try:
@@ -38,7 +57,30 @@ EXTENDED_WAIT = 30
 UPDATE_TIMEOUT = 180
 
 STATE_DIR = HOME / ".deskpi-karaoke"
-PIKARAOKE_VERSION_FILE = STATE_DIR / "PIKARAOKE_VERSION"
+STATE_FILE = STATE_DIR / "state.toml"
+
+
+# Standalone duplicate of src/state.py's flat-TOML format: this script is
+# copied out to $HOME and run without the repo/src package alongside it, so
+# it can't import src.state and instead carries its own tiny read/write pair
+# for the one field it owns (pikaraoke_version).
+def _load_state() -> dict:
+    if not STATE_FILE.exists():
+        return {}
+    with STATE_FILE.open("rb") as f:
+        return tomllib.load(f).get("state", {})
+
+
+def _save_state_field(key, value):
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    data = _load_state()
+    data[key] = value
+    lines = ["[state]"]
+    for k, v in data.items():
+        lines.append(
+            f'{k} = "{v}"' if not isinstance(v, bool) else f"{k} = {str(v).lower()}"
+        )
+    STATE_FILE.write_text("\n".join(lines) + "\n")
 
 
 def check_internet(timeout=3):
@@ -53,24 +95,21 @@ def check_internet(timeout=3):
 def launch_pikaraoke():
     env = os.environ.copy()
     env["PATH"] = os.environ["PATH"]
-    logfile = HOME / "pikaraoke_output.log"
-    with open(logfile, "a") as log:
-        log.write(
-            f"🎤 [LOG] Launching PiKaraoke @ {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
-        )
-        if not (VENV_BIN / "yt-dlp").exists():
-            log.write("⚠️ [LOG] yt-dlp not found in venv bin\n")
-        if not (DENO_BIN / "deno").exists():
-            log.write("⚠️ [LOG] deno not found in ~/.deno/bin\n")
-        try:
+    logger.info("🎤 Launching PiKaraoke @ %s", time.strftime("%Y-%m-%d %H:%M:%S"))
+    if not (VENV_BIN / "yt-dlp").exists():
+        logger.warning("⚠️ yt-dlp not found in venv bin")
+    if not (DENO_BIN / "deno").exists():
+        logger.warning("⚠️ deno not found in ~/.deno/bin")
+    try:
+        with open(OUTPUT_LOG_FILE, "a") as log:
             subprocess.Popen(
                 [str(VENV_BIN / "pikaraoke")],
                 stdout=log,
                 stderr=subprocess.STDOUT,
                 env=env,
             )
-        except Exception as e:
-            log.write(f"❌ [LOG] Failed to launch PiKaraoke: {e}\n")
+    except Exception as e:
+        logger.error("❌ Failed to launch PiKaraoke: %s", e)
 
 
 def get_installed_pikaraoke_version():
@@ -97,21 +136,21 @@ def get_latest_pikaraoke_version(timeout=5):
 
 
 def store_pikaraoke_version(version):
-    """Persist the currently-installed pikaraoke version so it's readable without a venv pip call."""
+    """Persist the currently-installed pikaraoke version, readable without a venv pip call."""
     try:
-        STATE_DIR.mkdir(parents=True, exist_ok=True)
-        PIKARAOKE_VERSION_FILE.write_text(f"{version}\n")
+        _save_state_field("pikaraoke_version", str(version))
     except Exception:
         pass
 
 
 def update_pikaraoke(target_version):
     """Upgrade pikaraoke and yt-dlp in the venv."""
-    logfile = HOME / "pikaraoke_output.log"
-    with open(logfile, "a") as log:
-        log.write(
-            f"🔄 [LOG] Upgrading pikaraoke to {target_version} + yt-dlp @ {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
-        )
+    logger.info(
+        "🔄 Upgrading pikaraoke to %s + yt-dlp @ %s",
+        target_version,
+        time.strftime("%Y-%m-%d %H:%M:%S"),
+    )
+    with open(OUTPUT_LOG_FILE, "a") as log:
         try:
             result = subprocess.run(
                 [
@@ -126,11 +165,11 @@ def update_pikaraoke(target_version):
                 timeout=UPDATE_TIMEOUT,
             )
             if result.returncode != 0:
-                log.write("⚠️ [LOG] pip upgrade exited with non-zero status\n")
+                logger.warning("⚠️ pip upgrade exited with non-zero status")
             else:
-                log.write("✅ [LOG] pip upgrade completed\n")
+                logger.info("✅ pip upgrade completed")
         except subprocess.TimeoutExpired:
-            log.write(f"❌ [LOG] pip upgrade timed out after {UPDATE_TIMEOUT}s\n")
+            logger.error("❌ pip upgrade timed out after %ss", UPDATE_TIMEOUT)
 
 
 def check_and_update():
@@ -140,7 +179,9 @@ def check_and_update():
 
     # If PyPI is down or unreachable, gracefully skip updating and launch anyway
     if latest is None:
-        print("⚠️ Unable to fetch latest version from PyPI. Skipping update check.")
+        logger.warning(
+            "⚠️ Unable to fetch latest version from PyPI. Skipping update check."
+        )
         store_pikaraoke_version(installed)
         return False
 
@@ -160,12 +201,10 @@ def check_and_update():
 
 def safe_check_and_update():
     """Run check_and_update() without letting any failure block the launch below."""
-    logfile = HOME / "pikaraoke_output.log"
     try:
         check_and_update()
     except Exception as e:
-        with open(logfile, "a") as log:
-            log.write(f"❌ [LOG] check_and_update() failed: {e}\n")
+        logger.error("❌ check_and_update() failed: %s", e)
 
 
 def main():

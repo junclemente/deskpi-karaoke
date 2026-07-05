@@ -1,18 +1,21 @@
 """External runtime setup: Deno (JS runtime for yt-dlp) and yt-dlp defaults."""
 
+import logging
 import shutil
 
 from src import constants
-from src.shell import print_h, run
+from src.shell import log_section, run
+
+logger = logging.getLogger(__name__)
 
 
 def install_deno():
-    print_h("Installing Deno (JS runtime for yt-dlp)")
+    log_section("Installing Deno (JS runtime for yt-dlp)")
 
     # If already installed, skip
     if shutil.which("deno"):
         run(["deno", "--version"], check=False)
-        print("✅ Deno already installed.")
+        logger.info("✅ Deno already installed.")
         return
 
     # Install Deno to ~/.deno/bin/deno
@@ -23,10 +26,10 @@ def install_deno():
     deno_exe = deno_bin / "deno"
 
     if deno_exe.exists():
-        print(f"✅ Deno installed at {deno_exe}")
+        logger.info("✅ Deno installed at %s", deno_exe)
         run([str(deno_exe), "--version"], check=False)
     else:
-        print("⚠️ Deno install ran but binary missing at ~/.deno/bin/deno")
+        logger.warning("⚠️ Deno install ran but binary missing at ~/.deno/bin/deno")
 
     # Ensure PATH for future login shells (helpful, but not sufficient for autostart)
     profile = constants.HOME / ".profile"
@@ -38,13 +41,13 @@ def install_deno():
             profile.write_text(
                 text.rstrip() + "\n" + export_line + "\n", encoding="utf-8"
             )
-            print(f"✅ Added Deno PATH to {profile}")
+            logger.info("✅ Added Deno PATH to %s", profile)
     except Exception as e:
-        print(f"⚠️ Could not update {profile}: {e}")
+        logger.warning("⚠️ Could not update %s: %s", profile, e)
 
 
 def install_ytdlp_config():
-    print_h("Configuring yt-dlp defaults")
+    log_section("Configuring yt-dlp defaults")
     cfg_dir = constants.HOME / ".config" / "yt-dlp"
     cfg_dir.mkdir(parents=True, exist_ok=True)
     cfg_file = cfg_dir / "config"
@@ -52,4 +55,4 @@ def install_ytdlp_config():
         "--js-runtimes deno\n" "-t mp4\n" "--merge-output-format mp4\n",
         encoding="utf-8",
     )
-    print(f"✅ Wrote {cfg_file}")
+    logger.info("✅ Wrote %s", cfg_file)

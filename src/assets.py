@@ -1,14 +1,17 @@
 """Copies autostart/UI assets and desktop entry into $HOME, patches shell rc files."""
 
+import logging
 import shutil
 from pathlib import Path
 
 from src import constants
-from src.shell import print_h
+from src.shell import log_section
+
+logger = logging.getLogger(__name__)
 
 
 def copy_assets():
-    print_h("Copying assets to $HOME")
+    log_section("Copying assets to $HOME")
     constants.AUTOSTART_DIR.mkdir(parents=True, exist_ok=True)
     # autostart script & UI
     shutil.copy2(
@@ -48,4 +51,4 @@ def ensure_rc_sourced(rc_path: Path):
         if marker not in text:
             rc_path.write_text(text.rstrip() + block)
     except Exception as e:
-        print(f"⚠️  Could not update {rc_path}: {e}")
+        logger.warning("⚠️  Could not update %s: %s", rc_path, e)

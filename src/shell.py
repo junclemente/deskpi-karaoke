@@ -1,12 +1,15 @@
 """Low-level shell/process helpers shared by install and uninstall scripts."""
 
+import logging
 import shutil
 import subprocess
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
 
-def print_h(msg: str):
-    print(f"\n=== {msg} ===")
+
+def log_section(msg: str):
+    logger.info("\n=== %s ===", msg)
 
 
 def run(cmd, check=True, cwd=None, env=None, capture_output=False, text=True):
@@ -32,18 +35,18 @@ def safe_remove(path: Path):
         return
 
     if path.is_dir() and "pikaraoke-songs" in path.name.lower():
-        print(f"🚫 Skipping songs folder: {path}")
+        logger.warning("🚫 Skipping songs folder: %s", path)
         return
 
     try:
         if path.is_dir():
             shutil.rmtree(path)
-            print(f"🗑️ Removed directory: {path}")
+            logger.info("🗑️ Removed directory: %s", path)
         else:
             path.unlink()
-            print(f"🗑️ Removed file: {path}")
+            logger.info("🗑️ Removed file: %s", path)
     except Exception as e:
-        print(f"❌ Error removing {path}: {e}")
+        logger.error("❌ Error removing %s: %s", path, e)
 
 
 def stop_service(name):

@@ -1,5 +1,11 @@
-"""Shared paths and configuration constants for the installer."""
+"""Shared paths and configuration constants for the installer.
 
+Install-time tunables (Python floor, package lists) live in config.toml at
+the repo root so they're editable without touching Python source; loaded
+here via the stdlib tomllib reader (Python 3.11+).
+"""
+
+import tomllib
 from pathlib import Path
 
 HOME = Path.home()
@@ -10,22 +16,13 @@ ASSETS_DIR = REPO_ROOT / "assets"
 AUTOSTART_DIR = HOME / ".config" / "autostart"
 DESKTOP_FILE_PATH = AUTOSTART_DIR / "pikaraoke.desktop"
 
-PY_MIN = (3, 10)
+CONFIG_FILE = REPO_ROOT / "config.toml"
 
-PKG_CORE = [
-    "pip>=24.0",
-    "setuptools>=68",
-    "wheel",
-    "packaging>=24.0",
-    "yt-dlp",
-    "pikaraoke==1.18.0",  # pinned: 1.19.0 has breaking splash screen bug
-]
+with CONFIG_FILE.open("rb") as _f:
+    _config = tomllib.load(_f)
 
-APT_PKGS = [
-    "python3-venv",
-    "python3-pip",
-    "ffmpeg",
-    "nodejs",
-    "npm",
-    "curl",
-]
+PY_MIN = tuple(
+    int(part) for part in _config["install"]["python_min_version"].split(".")
+)
+PKG_CORE = _config["install"]["packages"]["core"]
+APT_PKGS = _config["install"]["packages"]["apt"]

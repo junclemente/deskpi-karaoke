@@ -1,0 +1,21 @@
+[install]
+python_min_version = "3.11"
+
+[install.packages]
+core = [
+  "pip>=24.0",
+  "setuptools>=68",
+  "wheel",
+  "packaging>=24.0",
+  "yt-dlp",
+  "pikaraoke==1.18.0",  # pinned: 1.19.0 has breaking splash screen bug
+  ]
+apt = [
+  "python3-venv",
+  "python3-pip",
+  "ffmpeg",
+  "nodejs",
+  "npm",
+  "curl",
+  "logrotate",  # ensures log rotation works even on minimal images
+  ]

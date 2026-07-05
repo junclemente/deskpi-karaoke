@@ -3,10 +3,10 @@ from unittest.mock import Mock
 from src import shell
 
 
-def test_print_h_wraps_message(capsys):
-    shell.print_h("Hello")
-    out = capsys.readouterr().out
-    assert "=== Hello ===" in out
+def test_log_section_wraps_message(caplog):
+    with caplog.at_level("INFO", logger="src.shell"):
+        shell.log_section("Hello")
+    assert "=== Hello ===" in caplog.text
 
 
 def test_run_with_string_command_uses_shell_true(monkeypatch):

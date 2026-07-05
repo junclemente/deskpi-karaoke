@@ -1,11 +1,14 @@
 """Platform checks and system (apt) package installation."""
 
+import logging
 import platform
 import shutil
 import sys
 
 from src import constants
-from src.shell import print_h, run
+from src.shell import log_section, run
+
+logger = logging.getLogger(__name__)
 
 
 def ensure_python_version():
@@ -18,26 +21,28 @@ def ensure_python_version():
 
 def check_platform():
     # Soft checks for Pi + Bookworm Desktop
-    print_h("Checking platform")
+    log_section("Checking platform")
     uname = platform.uname()
     try:
         with open("/etc/os-release") as f:
             osrel = f.read().lower()
     except Exception:
         osrel = ""
-    print(f"System : {uname.system} {uname.release} ({uname.machine})")
+    logger.info("System : %s %s (%s)", uname.system, uname.release, uname.machine)
     if "bookworm" not in osrel:
-        print("⚠️  Non-Bookworm OS detected. Proceeding anyway...")
+        logger.warning("⚠️  Non-Bookworm OS detected. Proceeding anyway...")
     if "raspberry" not in (uname.machine.lower() + " " + osrel):
-        print("ℹ️  This does not appear to be a Raspberry Pi. Proceeding anyway...")
+        logger.info(
+            "ℹ️  This does not appear to be a Raspberry Pi. Proceeding anyway..."
+        )
 
 
 def apt_install():
-    print_h("Installing system packages (apt)")
+    log_section("Installing system packages (apt)")
     apt = shutil.which("apt-get") or shutil.which("apt")
     sudo = shutil.which("sudo")
     if not apt:
-        print("ℹ️  apt not found (non-Debian system?) Skipping system packages.")
+        logger.info("ℹ️  apt not found (non-Debian system?) Skipping system packages.")
         return
     # Update
     cmd_update = f"{apt} update"
@@ -58,4 +63,4 @@ def apt_install():
             run(cmd_install, check=False)
             run(try_chromium, check=False)
     except Exception as e:
-        print(f"⚠️  apt install step had issues: {e}. Continuing...")
+        logger.warning("⚠️  apt install step had issues: %s. Continuing...", e)

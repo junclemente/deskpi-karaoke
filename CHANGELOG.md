@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.5.0] - 2026-07-05
+
+### 🚀 New Features
+
+- **Structured TOML config and state**, replacing hardcoded Python literals
+  and flat single-value files:
+  - New `config.toml` (repo root) holds the minimum Python version and the
+    core/apt package lists; `src/constants.py` loads it via the stdlib
+    `tomllib` reader.
+  - `~/.deskpi-karaoke/{VERSION,.last_applied_sha_dev,PIKARAOKE_VERSION,.reboot_required}`
+    are consolidated into one `~/.deskpi-karaoke/state.toml`, managed by
+    `src/state.py`'s new `load_state()`/`save_state()`. Legacy flat files are
+    removed automatically on first run after upgrading.
+  - New `state_query.py` (repo root) — `get`/`set` CLI so the bash
+    `pk_aliases` helper can read/write state without a TOML parser of its
+    own. `assets/autostart_pikaraoke.py` keeps a small standalone duplicate
+    of the read/write logic for the `pikaraoke_version` field it owns, since
+    it runs outside the repo after being copied to `$HOME`.
+- **Real logging** everywhere: `print()`/`print_h()` replaced by Python's
+  `logging` module across `src/*.py`, `install.py`, `uninstall.py`,
+  `uninstall_clean.py`, and `assets/pikaraoke_ui.py` (new
+  `src/logging_config.py`, `print_h` renamed to `log_section`).
+- **Log rotation** for the autostart launcher: the `pikaraoke` subprocess's
+  raw output (`~/pikaraoke_output.log`) is now rotated by a system
+  `logrotate` drop-in (`copytruncate`, installed by new `src/logs.py`); the
+  launcher's own bookkeeping messages move to a separate
+  `~/pikaraoke_launcher.log` via `logging.handlers.RotatingFileHandler`, so
+  Python-side and system-side rotation never fight over the same file.
+
+### ⚠️ Breaking / Upgrade Notes
+
+- **Minimum Python raised to 3.11** (from 3.10), required for the stdlib
+  `tomllib` reader. Raspberry Pi OS Bookworm already ships 3.11, so this is a
+  no-op on the actual target hardware. CI matrix updated accordingly
+  (dropped 3.10, added 3.11).
+- Installer state file layout changed (see above) — existing installs pick
+  up the new format automatically on the next `pk update`/`pk devupdate`.
+
 ## [v0.4.7] - 2026-07-05
 
 ### 🛠 Improvements

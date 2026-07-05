@@ -62,6 +62,9 @@ def test_main_calls_steps_in_documented_order(monkeypatch):
     monkeypatch.setattr(cli, "install_deno", tracker("install_deno"))
     monkeypatch.setattr(cli, "ensure_venv", tracker("ensure_venv"))
     monkeypatch.setattr(cli, "install_ytdlp_config", tracker("install_ytdlp_config"))
+    monkeypatch.setattr(
+        cli, "install_logrotate_config", tracker("install_logrotate_config")
+    )
     monkeypatch.setattr(cli, "copy_assets", tracker("copy_assets"))
     monkeypatch.setattr(cli, "record_state", tracker("record_state"))
 
@@ -74,6 +77,7 @@ def test_main_calls_steps_in_documented_order(monkeypatch):
         "install_deno",
         "ensure_venv",
         "install_ytdlp_config",
+        "install_logrotate_config",
         "copy_assets",
         "record_state",
     ]

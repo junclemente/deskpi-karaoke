@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 
+import argparse
+import logging
 import subprocess
 import sys
 from pathlib import Path
-import argparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from src.logging_config import setup_logging  # noqa: E402
 from src.shell import safe_remove, stop_service  # noqa: E402
+
+logger = logging.getLogger(__name__)
 
 
 # --- Parse CLI Arguments ---
@@ -25,34 +29,40 @@ def parse_args():
 
 # --- Removal Tasks ---
 def remove_current_virtualenv():
-    print("🔍 Removing current virtual environment...")
+    logger.info("🔍 Removing current virtual environment...")
     safe_remove(Path.home() / ".venv-pikaraoke")
 
 
 def remove_start_script():
-    print("🔍 Removing start script...")
+    logger.info("🔍 Removing start script...")
     safe_remove(Path.home() / "pikaraoke_start.py")
 
 
 def remove_shortcut():
-    print("🔍 Removing desktop shortcut...")
+    logger.info("🔍 Removing desktop shortcut...")
     safe_remove(Path.home() / "Desktop" / "Start PiKaraoke.desktop")
 
 
 def remove_logs():
-    print("🔍 Removing logs...")
+    logger.info("🔍 Removing logs...")
     home = Path.home()
     safe_remove(home / "pikaraoke_output.log")
     safe_remove(home / "pikaraoke_install.log")
+    safe_remove(home / "pikaraoke_launcher.log")
 
 
 def remove_autostart():
-    print("🔍 Removing autostart config...")
+    logger.info("🔍 Removing autostart config...")
     safe_remove(Path("/etc/xdg/autostart/pikaraoke.desktop"))
 
 
+def remove_logrotate_config():
+    logger.info("🔍 Removing logrotate config...")
+    subprocess.run(["sudo", "rm", "-f", "/etc/logrotate.d/pikaraoke"], check=False)
+
+
 def remove_deskpi_drivers():
-    print("🧹 Removing DeskPi Lite drivers...")
+    logger.info("🧹 Removing DeskPi Lite drivers...")
     stop_service("deskpi.service")
     subprocess.run(
         ["sudo", "rm", "-f", "/etc/systemd/system/deskpi.service"], check=False
@@ -63,21 +73,23 @@ def remove_deskpi_drivers():
 
 # --- Main Entry Point ---
 def main():
+    setup_logging()
     args = parse_args()
-    print("\n🧹 PiKaraoke Uninstaller (v0.3.0+) Starting...\n")
+    logger.info("\n🧹 PiKaraoke Uninstaller (v0.3.0+) Starting...\n")
 
     remove_current_virtualenv()
     remove_start_script()
     remove_shortcut()
     remove_logs()
     remove_autostart()
+    remove_logrotate_config()
 
     if args.deskpi:
         remove_deskpi_drivers()
     else:
-        print("💡 DeskPi drivers preserved (use --deskpi to remove)")
+        logger.info("💡 DeskPi drivers preserved (use --deskpi to remove)")
 
-    print("\n✅ PiKaraoke has been uninstalled. Your songs are safe 🎵\n")
+    logger.info("\n✅ PiKaraoke has been uninstalled. Your songs are safe 🎵\n")
 
 
 if __name__ == "__main__":

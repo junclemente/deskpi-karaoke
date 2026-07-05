@@ -5,15 +5,18 @@ cat > ~/.pk_aliases << 'EOF'
 export PK_HOME="${PK_HOME:-$HOME/deskpi-karaoke}"
 export PK_REMOTE="${PK_REMOTE:-https://github.com/junclemente/deskpi-karaoke.git}"   # change if you use a fork
 
-# State dir and flags
+# State dir — structured state lives in $PK_STATE/state.toml, read/written
+# via state_query.py (bash has no TOML parser of its own)
 export PK_STATE="${PK_STATE:-$HOME/.deskpi-karaoke}"
-export PK_REBOOT_FLAG="$PK_STATE/.reboot_required"
 mkdir -p "$PK_STATE"
 
-# Files to remember what we've applied
-export PK_LAST_SHA_MAIN="$PK_STATE/.last_applied_sha_main"
-export PK_LAST_SHA_DEV="$PK_STATE/.last_applied_sha_dev"
-export PK_VER_FILE="$PK_STATE/VERSION"   # written by installer on main only
+_pk_state_get() {
+  python3 "$PK_HOME/state_query.py" get "$1" "${2:-}"
+}
+
+_pk_state_set() {
+  python3 "$PK_HOME/state_query.py" set "$1" "$2"
+}
 
 _pk_sync_repo_branch() {
   local branch="$1"
@@ -45,9 +48,9 @@ _pk_sync_repo_branch() {
 _pk_run_installer_then_maybe_reboot() {
   echo "▶️ Running installer…"
   python3 "$PK_HOME/install.py" || { echo "❌ Installer update failed"; return 3; }
-  if [ -f "$PK_REBOOT_FLAG" ]; then
+  if [ "$(_pk_state_get reboot_required false)" = "true" ]; then
     echo "♻️ Reboot requested by installer. Rebooting…"
-    rm -f "$PK_REBOOT_FLAG"
+    _pk_state_set reboot_required false
     sudo reboot
   else
     echo "✅ Installer completed. No reboot requested."
@@ -63,7 +66,7 @@ pk() {
 
       # main: version gate — skip if VERSION unchanged
       latest_tag="$(git -C "$PK_HOME" tag --sort=-v:refname | head -n1 | sed 's/^v//;s/^V//')"
-      recorded_ver="$( [ -f "$PK_VER_FILE" ] && cat "$PK_VER_FILE" || echo "" )"
+      recorded_ver="$(_pk_state_get version)"
 
       if [ $rc -eq 0 ] && [ -n "$latest_tag" ] && [ "$recorded_ver" = "$latest_tag" ]; then
         echo "✅ Already on main v$recorded_ver. Nothing to do."
@@ -71,7 +74,7 @@ pk() {
       fi
 
       _pk_run_installer_then_maybe_reboot || return $?
-      [ -n "$latest_tag" ] && echo "$latest_tag" > "$PK_VER_FILE"
+      [ -n "$latest_tag" ] && _pk_state_set version "$latest_tag"
       ;;
 
     dev|devupdate)
@@ -80,7 +83,7 @@ pk() {
       [ $rc -eq 2 ] && return 1
 
       current_dev_sha="$(git -C "$PK_HOME" rev-parse origin/dev)"
-      last_applied_sha="$( [ -f "$PK_LAST_SHA_DEV" ] && cat "$PK_LAST_SHA_DEV" || echo "" )"
+      last_applied_sha="$(_pk_state_get last_applied_sha_dev)"
 
       if [ $rc -eq 0 ] && [ "$current_dev_sha" = "$last_applied_sha" ] && [ -n "$current_dev_sha" ]; then
         echo "✅ Dev up to date (applied @ $current_dev_sha). Skipping."
@@ -88,14 +91,15 @@ pk() {
       fi
 
       _pk_run_installer_then_maybe_reboot || return $?
-      echo "$current_dev_sha" > "$PK_LAST_SHA_DEV"
+      _pk_state_set last_applied_sha_dev "$current_dev_sha"
       ;;
 
     version)
-      [ -f "$PK_VER_FILE" ] && echo "📄 Installed (recorded main): v$(cat "$PK_VER_FILE")" || echo "📄 Installed (recorded main): unknown"
+      recorded_ver="$(_pk_state_get version)"
+      [ -n "$recorded_ver" ] && echo "📄 Installed (recorded main): v$recorded_ver" || echo "📄 Installed (recorded main): unknown"
       echo "🏷️ Latest tag: $(git -C "$PK_HOME" fetch --tags >/dev/null 2>&1; git -C "$PK_HOME" tag --sort=-v:refname | head -n1)"
-      echo "🔧 Last applied dev SHA: $( [ -f "$PK_LAST_SHA_DEV" ] && cat "$PK_LAST_SHA_DEV" || echo 'unknown')"
-      echo "🎤 PiKaraoke package: $( [ -f "$PK_STATE/PIKARAOKE_VERSION" ] && cat "$PK_STATE/PIKARAOKE_VERSION" || echo 'unknown')"
+      echo "🔧 Last applied dev SHA: $(_pk_state_get last_applied_sha_dev unknown)"
+      echo "🎤 PiKaraoke package: $(_pk_state_get pikaraoke_version unknown)"
       ;;
 
     reboot) echo "♻️ Rebooting Raspberry Pi…"; sudo reboot ;;
