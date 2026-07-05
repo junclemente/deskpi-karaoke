@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.4.6] - 2026-07-05
+
+### 🛠 Improvements
+
+- Refactored `install.py` from a single procedural script into a modular `src/`
+  package (`constants`, `shell`, `system`, `network`, `venv`, `assets`, `state`,
+  `cli`). `install.py` is now a thin entry point.
+- `uninstall.py` and `uninstall_clean.py` now share `safe_remove()` and
+  `stop_service()` from `src/shell.py` instead of duplicating them.
+- Added `.gitignore` for `__pycache__`/`*.pyc`.
+- No behavior change: installer remains strictly idempotent, and
+  `assets/autostart_pikaraoke.py` / `assets/pikaraoke_ui.py` are untouched
+  standalone scripts (copied to `$HOME` and run outside the repo).
+
 ## [v0.3.5] - 2026-01-23
 
 ### 🚀 New Features

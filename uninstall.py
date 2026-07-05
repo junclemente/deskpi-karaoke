@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
-import os
-import shutil
 import subprocess
+import sys
 from pathlib import Path
 import argparse
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from src.shell import safe_remove, stop_service
 
 
 # --- Parse CLI Arguments ---
@@ -18,33 +21,6 @@ def parse_args():
         help="Also remove DeskPi Lite 4 drivers",
     )
     return parser.parse_args()
-
-
-# --- Utility Functions ---
-def safe_remove(path: Path):
-    """Removes a file or directory if it exists — skips if 'pikaraoke-songs' is in path"""
-    if not path.exists():
-        return
-
-    if path.is_dir() and "pikaraoke-songs" in path.name.lower():
-        print(f"🚫 Skipping songs folder: {path}")
-        return
-
-    try:
-        if path.is_dir():
-            shutil.rmtree(path)
-            print(f"🗑️ Removed directory: {path}")
-        else:
-            path.unlink()
-            print(f"🗑️ Removed file: {path}")
-    except Exception as e:
-        print(f"❌ Error removing {path}: {e}")
-
-
-def stop_service(name):
-    """Stops and disables a systemd service"""
-    subprocess.run(["sudo", "systemctl", "stop", name], check=False)
-    subprocess.run(["sudo", "systemctl", "disable", name], check=False)
 
 
 # --- Removal Tasks ---
