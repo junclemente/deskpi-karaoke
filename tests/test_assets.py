@@ -83,6 +83,7 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
     (assets_dir / "autostart_pikaraoke.py").write_text("# autostart stub")
     (assets_dir / "pikaraoke_ui.py").write_text("# ui stub")
     (assets_dir / "state_toml.py").write_text("# state_toml stub")
+    (assets_dir / "pikaraoke_icon.png").write_text("# icon stub")
     (assets_dir / "pk_aliases").write_text("# aliases stub")
 
     venv_dir = home / ".venv-pikaraoke"
@@ -90,6 +91,7 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
     desktop_file = autostart_dir / "pikaraoke.desktop"
     desktop_dir = home / "Desktop"
     desktop_shortcut = desktop_dir / "Start PiKaraoke.desktop"
+    icon_path = home / "pikaraoke_icon.png"
 
     monkeypatch.setattr(assets.constants, "HOME", home)
     monkeypatch.setattr(assets.constants, "ASSETS_DIR", assets_dir)
@@ -98,6 +100,7 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
     monkeypatch.setattr(assets.constants, "DESKTOP_FILE_PATH", desktop_file)
     monkeypatch.setattr(assets.constants, "DESKTOP_DIR", desktop_dir)
     monkeypatch.setattr(assets.constants, "DESKTOP_SHORTCUT_PATH", desktop_shortcut)
+    monkeypatch.setattr(assets.constants, "ICON_PATH", icon_path)
     libfm_conf = home / ".config" / "libfm" / "libfm.conf"
     monkeypatch.setattr(assets.constants, "LIBFM_CONFIG_PATH", libfm_conf)
 
@@ -107,16 +110,19 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
     assert (home / "pikaraoke_ui.py").read_text() == "# ui stub"
     assert (home / "state_toml.py").read_text() == "# state_toml stub"
     assert (home / ".pk_aliases").read_text() == "# aliases stub"
+    assert icon_path.read_text() == "# icon stub"
 
     desktop_content = desktop_file.read_text()
     assert (
         f"Exec={venv_dir}/bin/python {home}/autostart_pikaraoke.py" in desktop_content
     )
+    assert f"Icon={icon_path}" in desktop_content
 
     shortcut_content = desktop_shortcut.read_text()
     assert (
         f"Exec={venv_dir}/bin/python {home}/autostart_pikaraoke.py" in shortcut_content
     )
+    assert f"Icon={icon_path}" in shortcut_content
     assert desktop_shortcut.stat().st_mode & 0o111 == 0o111
     assert "quick_exec=1" in libfm_conf.read_text()
 

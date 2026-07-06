@@ -25,13 +25,14 @@ def copy_assets():
     shutil.copy2(
         constants.ASSETS_DIR / "state_toml.py", constants.HOME / "state_toml.py"
     )
+    shutil.copy2(constants.ASSETS_DIR / "pikaraoke_icon.png", constants.ICON_PATH)
     # desktop entry
     constants.DESKTOP_FILE_PATH.write_text(
         f"""[Desktop Entry]
 Name=Start PiKaraoke
 Comment=Launch PiKaraoke on boot
 Exec={constants.VENV_DIR}/bin/python {constants.HOME}/autostart_pikaraoke.py
-Icon=utilities-terminal
+Icon={constants.ICON_PATH}
 Terminal=false
 Type=Application
 X-GNOME-Autostart-enabled=true
@@ -44,7 +45,7 @@ X-GNOME-Autostart-enabled=true
 Name=Start PiKaraoke
 Comment=Launch PiKaraoke
 Exec={constants.VENV_DIR}/bin/python {constants.HOME}/autostart_pikaraoke.py
-Icon=utilities-terminal
+Icon={constants.ICON_PATH}
 Terminal=false
 Type=Application
 """

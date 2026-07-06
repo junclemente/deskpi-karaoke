@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.6.6] - 2026-07-06
+
+### 🚀 New Features
+
+- **Both `.desktop` entries now use the actual PiKaraoke mascot icon**
+  instead of the generic `utilities-terminal` console icon. The icon
+  (`assets/pikaraoke_icon.png`) was extracted from the installed
+  `pikaraoke` package's own `static/images/logo.png` banner — isolated via
+  connected-component analysis (not a manual crop guess) to cleanly pull
+  out just the mascot, excluding the "PiKaraoke" wordmark and music-note
+  glyphs sharing that image, then padded to a square and downsampled to
+  256×256 with a transparent background.
+  - `src/constants.py` gained `ICON_PATH` (`~/pikaraoke_icon.png`).
+  - `src/assets.py`'s `copy_assets()` now copies the icon alongside the
+    other assets and both `.desktop` entries' `Icon=` line points at it.
+  - Verified end-to-end: ran `copy_assets()` for real and confirmed both
+    `~/Desktop/Start PiKaraoke.desktop` and
+    `~/.config/autostart/pikaraoke.desktop` reference the installed icon
+    path, and the copied PNG is a valid 256×256 RGBA image.
+
 ## [v0.6.5] - 2026-07-06
 
 ### 🐛 Fixes
