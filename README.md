@@ -339,6 +339,13 @@ installed on the Raspberry Pi itself; `install.py` and `src/` remain stdlib-only
 
 ---
 
+## 🙏 Acknowledgments
+
+- [Google Gemini](https://gemini.google.com/) was used to help draft prompts
+  for this project.
+
+---
+
 ## 📜 License
 
 MIT — see [LICENSE](LICENSE).
