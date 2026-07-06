@@ -55,8 +55,6 @@ def record_state():
     log_section("Recording installer state")
     constants.STATE_DIR.mkdir(parents=True, exist_ok=True)
     _remove_legacy_state_files()
-    if constants.PIKARAOKE_PIN:
-        save_state({"pikaraoke_pin": constants.PIKARAOKE_PIN})
     branch = git("rev-parse --abbrev-ref HEAD", default="unknown") or "unknown"
     if branch in ("dev", "develop"):
         sha = git("rev-parse HEAD", default="") or ""

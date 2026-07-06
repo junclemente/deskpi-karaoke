@@ -10,7 +10,3 @@ def test_package_lists_loaded_from_config_toml():
     assert isinstance(constants.APT_PKGS, list) and len(constants.APT_PKGS) > 0
     assert any("pikaraoke" in pkg for pkg in constants.PKG_CORE)
     assert "logrotate" in constants.APT_PKGS
-
-
-def test_pikaraoke_pin_parsed_from_config_toml():
-    assert constants.PIKARAOKE_PIN == "1.18.0"

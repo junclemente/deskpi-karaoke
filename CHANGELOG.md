@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.6.3] - 2026-07-06
+
+### 🐛 Fixes
+
+- **Removed the `pikaraoke==1.18.0` pin entirely.** The splash-screen crash
+  it worked around (`get_raspi_wifi_text()` missing a required `url`
+  argument) was caused by an abandoned raspi-portal integration attempt,
+  not by a bug in pikaraoke itself — the premise behind the pin (and the
+  v0.6.2 pin-tracking machinery built to respect it) no longer holds now
+  that raspi-portal integration isn't in use. `config.toml`'s core package
+  list now installs plain `pikaraoke` (unpinned), and
+  `PIKARAOKE_PIN`/`state.toml`'s `pikaraoke_pin`/`autostart_pikaraoke.py`'s
+  pin-targeting branch from v0.6.2 are reverted — installs and boot-time
+  updates track pikaraoke's latest PyPI release again, as before v0.4.2.
+- Verified the fix against a venv still holding the old pinned state
+  (`pikaraoke 1.18.0` + `Flask 2.2.5`, the exact combination that produced
+  pip's "dependency conflicts... flask-smorest requires flask<4,>=3.0.2"
+  warning during install): re-running the installer's package-install step
+  now upgrades cleanly to `pikaraoke 1.19.0` + `Flask 3.1.2` +
+  `flask-smorest 0.47.0` with no resolver warnings, confirmed via
+  `pip check` (`No broken requirements found.`).
+
 ## [v0.6.2] - 2026-07-06
 
 ### 🐛 Fixes
