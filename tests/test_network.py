@@ -4,11 +4,12 @@ from src import network
 
 
 def test_install_ytdlp_config_writes_expected_content(tmp_path, monkeypatch):
-    monkeypatch.setattr(network.constants, "HOME", tmp_path)
+    cfg_dir = tmp_path / ".config" / "yt-dlp"
+    monkeypatch.setattr(network.constants, "YTDLP_CONFIG_DIR", cfg_dir)
 
     network.install_ytdlp_config()
 
-    cfg_file = tmp_path / ".config" / "yt-dlp" / "config"
+    cfg_file = cfg_dir / "config"
     assert cfg_file.exists()
     content = cfg_file.read_text()
     assert "--js-runtimes deno" in content

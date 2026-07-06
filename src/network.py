@@ -48,7 +48,7 @@ def install_deno():
 
 def install_ytdlp_config():
     log_section("Configuring yt-dlp defaults")
-    cfg_dir = constants.HOME / ".config" / "yt-dlp"
+    cfg_dir = constants.YTDLP_CONFIG_DIR
     cfg_dir.mkdir(parents=True, exist_ok=True)
     cfg_file = cfg_dir / "config"
     cfg_file.write_text(

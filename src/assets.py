@@ -2,6 +2,7 @@
 
 import configparser
 import logging
+import re
 import shutil
 from pathlib import Path
 
@@ -17,13 +18,11 @@ def copy_assets():
     # autostart script, UI, and the shared state-file helper it imports
     shutil.copy2(
         constants.ASSETS_DIR / "autostart_pikaraoke.py",
-        constants.HOME / "autostart_pikaraoke.py",
+        constants.AUTOSTART_SCRIPT_PATH,
     )
+    shutil.copy2(constants.ASSETS_DIR / "pikaraoke_ui.py", constants.PIKARAOKE_UI_PATH)
     shutil.copy2(
-        constants.ASSETS_DIR / "pikaraoke_ui.py", constants.HOME / "pikaraoke_ui.py"
-    )
-    shutil.copy2(
-        constants.ASSETS_DIR / "state_toml.py", constants.HOME / "state_toml.py"
+        constants.ASSETS_DIR / "state_toml.py", constants.STATE_TOML_HELPER_PATH
     )
     shutil.copy2(constants.ASSETS_DIR / "pikaraoke_icon.png", constants.ICON_PATH)
     # desktop entry
@@ -31,7 +30,7 @@ def copy_assets():
         f"""[Desktop Entry]
 Name=Start PiKaraoke
 Comment=Launch PiKaraoke on boot
-Exec={constants.VENV_DIR}/bin/python {constants.HOME}/autostart_pikaraoke.py
+Exec={constants.VENV_DIR}/bin/python {constants.AUTOSTART_SCRIPT_PATH}
 Icon={constants.ICON_PATH}
 Terminal=false
 Type=Application
@@ -44,7 +43,7 @@ X-GNOME-Autostart-enabled=true
         f"""[Desktop Entry]
 Name=Start PiKaraoke
 Comment=Launch PiKaraoke
-Exec={constants.VENV_DIR}/bin/python {constants.HOME}/autostart_pikaraoke.py
+Exec={constants.VENV_DIR}/bin/python {constants.AUTOSTART_SCRIPT_PATH}
 Icon={constants.ICON_PATH}
 Terminal=false
 Type=Application
@@ -57,7 +56,7 @@ Type=Application
     # pk_aliases
     aliases_src = constants.ASSETS_DIR / "pk_aliases"
     if aliases_src.exists():
-        shutil.copy2(aliases_src, constants.HOME / ".pk_aliases")
+        shutil.copy2(aliases_src, constants.PK_ALIASES_PATH)
         ensure_rc_sourced(constants.HOME / ".bashrc")
         ensure_rc_sourced(constants.HOME / ".zshrc")
 
@@ -93,3 +92,22 @@ def ensure_rc_sourced(rc_path: Path):
             rc_path.write_text(text.rstrip() + block)
     except Exception as e:
         logger.warning("⚠️  Could not update %s: %s", rc_path, e)
+
+
+_RC_BLOCK_PATTERN = re.compile(
+    r"\n?# >>> deskpi-karaoke aliases >>>.*?# <<< deskpi-karaoke aliases <<<\n?",
+    re.DOTALL,
+)
+
+
+def remove_rc_block(rc_path: Path):
+    """Reverse of ensure_rc_sourced: strip the marked block it added, if any."""
+    try:
+        if not rc_path.exists():
+            return
+        text = rc_path.read_text()
+        new_text = _RC_BLOCK_PATTERN.sub("", text)
+        if new_text != text:
+            rc_path.write_text(new_text)
+    except Exception as e:
+        logger.warning("⚠️  Could not clean up %s: %s", rc_path, e)

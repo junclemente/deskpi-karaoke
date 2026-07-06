@@ -32,6 +32,49 @@ def test_ensure_rc_sourced_is_idempotent(tmp_path):
     assert rc.read_text().count("# >>> deskpi-karaoke aliases >>>") == 1
 
 
+def test_remove_rc_block_strips_block_added_by_ensure_rc_sourced(tmp_path):
+    rc = tmp_path / ".bashrc"
+    rc.write_text("existing content\n")
+    assets.ensure_rc_sourced(rc)
+    assert "# >>> deskpi-karaoke aliases >>>" in rc.read_text()
+
+    assets.remove_rc_block(rc)
+
+    text = rc.read_text()
+    assert "existing content" in text
+    assert "# >>> deskpi-karaoke aliases >>>" not in text
+    assert "deskpi-karaoke" not in text
+
+
+def test_remove_rc_block_preserves_content_after_the_block(tmp_path):
+    rc = tmp_path / ".bashrc"
+    assets.ensure_rc_sourced(rc)
+    rc.write_text(rc.read_text() + "\nsome later line\n")
+
+    assets.remove_rc_block(rc)
+
+    text = rc.read_text()
+    assert "some later line" in text
+    assert "deskpi-karaoke" not in text
+
+
+def test_remove_rc_block_noop_when_marker_absent(tmp_path):
+    rc = tmp_path / ".bashrc"
+    rc.write_text("unrelated content\n")
+
+    assets.remove_rc_block(rc)
+
+    assert rc.read_text() == "unrelated content\n"
+
+
+def test_remove_rc_block_noop_when_file_missing(tmp_path):
+    rc = tmp_path / ".bashrc"
+
+    assets.remove_rc_block(rc)  # should not raise
+
+    assert not rc.exists()
+
+
 def test_enable_quick_exec_creates_config_when_absent(tmp_path, monkeypatch):
     libfm_conf = tmp_path / ".config" / "libfm" / "libfm.conf"
     monkeypatch.setattr(assets.constants, "LIBFM_CONFIG_PATH", libfm_conf)
@@ -92,6 +135,10 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
     desktop_dir = home / "Desktop"
     desktop_shortcut = desktop_dir / "Start PiKaraoke.desktop"
     icon_path = home / "pikaraoke_icon.png"
+    autostart_script_path = home / "autostart_pikaraoke.py"
+    pikaraoke_ui_path = home / "pikaraoke_ui.py"
+    state_toml_helper_path = home / "state_toml.py"
+    pk_aliases_path = home / ".pk_aliases"
 
     monkeypatch.setattr(assets.constants, "HOME", home)
     monkeypatch.setattr(assets.constants, "ASSETS_DIR", assets_dir)
@@ -101,27 +148,31 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
     monkeypatch.setattr(assets.constants, "DESKTOP_DIR", desktop_dir)
     monkeypatch.setattr(assets.constants, "DESKTOP_SHORTCUT_PATH", desktop_shortcut)
     monkeypatch.setattr(assets.constants, "ICON_PATH", icon_path)
+    monkeypatch.setattr(
+        assets.constants, "AUTOSTART_SCRIPT_PATH", autostart_script_path
+    )
+    monkeypatch.setattr(assets.constants, "PIKARAOKE_UI_PATH", pikaraoke_ui_path)
+    monkeypatch.setattr(
+        assets.constants, "STATE_TOML_HELPER_PATH", state_toml_helper_path
+    )
+    monkeypatch.setattr(assets.constants, "PK_ALIASES_PATH", pk_aliases_path)
     libfm_conf = home / ".config" / "libfm" / "libfm.conf"
     monkeypatch.setattr(assets.constants, "LIBFM_CONFIG_PATH", libfm_conf)
 
     assets.copy_assets()
 
-    assert (home / "autostart_pikaraoke.py").read_text() == "# autostart stub"
-    assert (home / "pikaraoke_ui.py").read_text() == "# ui stub"
-    assert (home / "state_toml.py").read_text() == "# state_toml stub"
-    assert (home / ".pk_aliases").read_text() == "# aliases stub"
+    assert autostart_script_path.read_text() == "# autostart stub"
+    assert pikaraoke_ui_path.read_text() == "# ui stub"
+    assert state_toml_helper_path.read_text() == "# state_toml stub"
+    assert pk_aliases_path.read_text() == "# aliases stub"
     assert icon_path.read_text() == "# icon stub"
 
     desktop_content = desktop_file.read_text()
-    assert (
-        f"Exec={venv_dir}/bin/python {home}/autostart_pikaraoke.py" in desktop_content
-    )
+    assert f"Exec={venv_dir}/bin/python {autostart_script_path}" in desktop_content
     assert f"Icon={icon_path}" in desktop_content
 
     shortcut_content = desktop_shortcut.read_text()
-    assert (
-        f"Exec={venv_dir}/bin/python {home}/autostart_pikaraoke.py" in shortcut_content
-    )
+    assert f"Exec={venv_dir}/bin/python {autostart_script_path}" in shortcut_content
     assert f"Icon={icon_path}" in shortcut_content
     assert desktop_shortcut.stat().st_mode & 0o111 == 0o111
     assert "quick_exec=1" in libfm_conf.read_text()

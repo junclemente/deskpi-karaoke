@@ -19,6 +19,15 @@ DESKTOP_DIR = HOME / "Desktop"
 DESKTOP_SHORTCUT_PATH = DESKTOP_DIR / "Start PiKaraoke.desktop"
 LIBFM_CONFIG_PATH = HOME / ".config" / "libfm" / "libfm.conf"
 ICON_PATH = HOME / "pikaraoke_icon.png"
+AUTOSTART_SCRIPT_PATH = HOME / "autostart_pikaraoke.py"
+PIKARAOKE_UI_PATH = HOME / "pikaraoke_ui.py"
+STATE_TOML_HELPER_PATH = HOME / "state_toml.py"
+PK_ALIASES_PATH = HOME / ".pk_aliases"
+YTDLP_CONFIG_DIR = HOME / ".config" / "yt-dlp"
+# System-wide autostart path from a much older install scheme (pre
+# system/user split) — nothing current creates it, but uninstall_clean.py
+# sweeps it as a legacy leftover.
+LEGACY_XDG_AUTOSTART_PATH = Path("/etc/xdg/autostart/pikaraoke.desktop")
 
 CONFIG_FILE = REPO_ROOT / "config.toml"
 

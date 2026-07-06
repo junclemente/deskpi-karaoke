@@ -266,10 +266,14 @@ python3 uninstall.py
 Removes:
 - The current virtual environment (`~/.venv-pikaraoke`)
 - The legacy start script (`~/pikaraoke_start.py`), if present
+- Copied installer assets (`~/autostart_pikaraoke.py`, `~/pikaraoke_ui.py`,
+  `~/state_toml.py`, `~/pikaraoke_icon.png`)
 - The desktop shortcut (`~/Desktop/Start PiKaraoke.desktop`)
 - Logs (`~/pikaraoke_output.log`, `~/pikaraoke_install.log`, `~/pikaraoke_launcher.log`)
-- The autostart config (`/etc/xdg/autostart/pikaraoke.desktop`)
+- The autostart config (`~/.config/autostart/pikaraoke.desktop`)
 - The logrotate config (`/etc/logrotate.d/pikaraoke`)
+- `~/.pk_aliases` and its sourced block in `.bashrc`/`.zshrc`
+- Installer state (`~/.deskpi-karaoke/`) and yt-dlp defaults (`~/.config/yt-dlp/`)
 
 ### Full clean uninstall
 
@@ -283,6 +287,8 @@ A more thorough sweep for legacy/older installs, in addition to everything
   unqualified name)
 - Legacy shortcuts/scripts (`~/pikaraoke_start_script.sh`,
   `~/pikaraoke_launcher.sh`, `~/pikaraoke_start.py`)
+- The legacy system-wide autostart path (`/etc/xdg/autostart/pikaraoke.desktop`),
+  from an older install scheme predating the user-level autostart entry above
 - The legacy `~/pikaraoke` folder — **but only if it doesn't contain a
   `pikaraoke-songs` folder**; if it does, the whole legacy folder is skipped
   and left in place rather than risk touching your songs

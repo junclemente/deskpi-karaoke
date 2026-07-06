@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.7.0] - 2026-07-06
+
+### 🐛 Fixes
+
+- **`uninstall.py`/`uninstall_clean.py` actually uninstall PiKaraoke now.**
+  Both scripts had drifted out of sync with the current install scheme and
+  only cleaned up paths from a much older, pre-TOML-migration layout.
+  Concretely, **neither script removed `~/.config/autostart/pikaraoke.desktop`
+  — the actual autostart entry `copy_assets()` writes** — they instead
+  targeted `/etc/xdg/autostart/pikaraoke.desktop`, a system-wide path
+  nothing has created since that older scheme. Running `uninstall.py` did
+  not stop PiKaraoke from auto-launching on the next reboot.
+  - Also newly cleaned up: `~/autostart_pikaraoke.py`, `~/pikaraoke_ui.py`,
+    `~/state_toml.py`, `~/pikaraoke_icon.png` (the copied helper
+    scripts/icon), `~/.pk_aliases` plus its sourced block in `.bashrc`/
+    `.zshrc` (via a new `src/assets.remove_rc_block()`, the reverse of
+    `ensure_rc_sourced()`), `~/.deskpi-karaoke/` (installer state), and
+    `~/.config/yt-dlp/` (yt-dlp defaults).
+  - `uninstall_clean.py` keeps sweeping the legacy `/etc/xdg/...` path too
+    (via the new `constants.LEGACY_XDG_AUTOSTART_PATH`), since that's
+    exactly its job — a thorough sweep for older installs — while
+    `uninstall.py` now targets only the current scheme.
+- **Root cause:** these paths were hardcoded independently in each
+  uninstaller rather than referencing `src/constants.py`, so they silently
+  fell out of sync as `install.py` evolved. `src/constants.py` gained
+  `AUTOSTART_SCRIPT_PATH`, `PIKARAOKE_UI_PATH`, `STATE_TOML_HELPER_PATH`,
+  `PK_ALIASES_PATH`, `YTDLP_CONFIG_DIR`, and `LEGACY_XDG_AUTOSTART_PATH`;
+  `src/assets.py` and `src/network.py` now reference these same constants
+  instead of inlining the paths a second time, so uninstall and install
+  can no longer drift apart the same way again.
+- **This drift went unnoticed because neither uninstaller had any test
+  coverage.** Added `tests/test_uninstall.py` and
+  `tests/test_uninstall_clean.py` (21 new tests, plus 4 more covering
+  `remove_rc_block()` in `tests/test_assets.py`), including explicit
+  regression tests reproducing the exact bug (asserting the *current*
+  autostart path is removed, not the legacy one).
+
 ## [v0.6.6] - 2026-07-06
 
 ### 🚀 New Features
