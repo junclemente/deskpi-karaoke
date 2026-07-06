@@ -1,6 +1,7 @@
 # 🎤 PiKaraoke Installer for Raspberry Pi 4 + DeskPi Lite 4
 
 ![Version](https://img.shields.io/github/v/tag/junclemente/deskpi-karaoke?label=version&style=flat-square)
+![Lint and Test](https://github.com/junclemente/deskpi-karaoke/actions/workflows/lint-and-test.yml/badge.svg)
 
 > **NOTE**  
 > This project is an active work in progress. Development happens on the **`dev` branch**.  
@@ -21,6 +22,7 @@ It focuses on:
 
 - 💻 **One-command installation** (`install.py`)
 - 🔁 **Automatic startup on boot** (Desktop autostart)
+- 🖱️ **One-click manual start** (`~/Desktop/Start PiKaraoke.desktop` icon)
 - 🌐 **Internet-aware launch**
   - waits for connectivity before starting PiKaraoke
   - user-friendly notifications if offline
@@ -42,8 +44,33 @@ It focuses on:
 - DeskPi Lite 4 case (recommended)
 
 **Software**
-- Raspberry Pi OS **Bookworm – Desktop**
+- Raspberry Pi OS **Bookworm – Desktop** (not Lite — autostart and the
+  clickable desktop icon both depend on the LXDE/PCManFM desktop session)
+- Python 3.11+ (ships by default on Bookworm; `install.py` hard-exits if
+  it isn't met)
+- `git` (ships by default on Bookworm Desktop; needed to clone this repo
+  and for `pk update`/`pk devupdate`)
 - Internet connection (Ethernet or Wi-Fi)
+
+**User account**
+- A user account with **passwordless sudo (`NOPASSWD`)**. This is the
+  account you create when imaging the SD card (e.g. via Raspberry Pi
+  Imager) — the username/password are entirely up to whoever sets up that
+  particular Pi (these instructions were tested with a `pi` user, password
+  `karaoke`, but any username works as long as it has passwordless sudo).
+  Raspberry Pi OS grants the account created at imaging time passwordless
+  sudo by default, so this is usually already satisfied — but since the OS
+  setup is fully customizable, it's worth calling out explicitly, and
+  re-adding if a prior hardening pass removed it.
+  - **This is required, not just convenient — there's no fallback if it's
+    missing.** `install.py` runs several `sudo` steps (installing apt
+    packages, writing `/etc/logrotate.d/pikaraoke`, and — with
+    `--deskpi` — installing/removing DeskPi Lite drivers and an automatic
+    `sudo reboot` afterward) without any password-retry or success
+    verification. If sudo ever needs a password it doesn't have — no
+    passwordless sudo, no attached terminal, an expired sudo session
+    mid-run — the affected step fails silently and the install can end up
+    incomplete with no obvious error.
 
 > ℹ️  
 > PiKaraoke’s own runtime requirements (Python, ffmpeg, codecs, etc.)  
@@ -56,13 +83,27 @@ It focuses on:
 
 ```
 deskpi-karaoke/
-├─ install.py                # main installer
+├─ install.py                # thin installer entry point
 ├─ uninstall.py              # standard uninstaller
 ├─ uninstall_clean.py        # full clean uninstaller
+├─ src/                      # installer orchestration & utility modules
+│  ├─ cli.py                       # orchestrates the install steps
+│  ├─ constants.py                 # shared paths & config
+│  ├─ shell.py                     # subprocess/file-removal helpers
+│  ├─ system.py                    # platform checks, apt install
+│  ├─ network.py                   # Deno + yt-dlp setup
+│  ├─ venv.py                      # virtualenv creation
+│  ├─ assets.py                    # asset copying, shell rc patching
+│  └─ state.py                     # git introspection, state recording
+├─ tests/                    # pytest suite for src/
 ├─ assets/
 │  ├─ autostart_pikaraoke.py       # waits for internet + launches PiKaraoke
 │  ├─ pikaraoke_ui.py              # Tk-based notifications
 │  └─ pk_aliases                   # helper terminal aliases
+├─ .github/workflows/        # CI: lint (black/flake8) + pytest
+├─ requirements-dev.txt      # pytest, black, flake8 (dev-only, not installed on the Pi)
+├─ pyproject.toml            # black + pytest config
+├─ .flake8                   # flake8 config
 ├─ CHANGELOG.md
 ├─ LICENSE
 ├─ README.md
@@ -94,9 +135,27 @@ The installer will:
   ```
   ~/autostart_pikaraoke.py
   ~/pikaraoke_ui.py
+  ~/state_toml.py
   ~/.config/autostart/pikaraoke.desktop
+  ~/Desktop/Start PiKaraoke.desktop
   ~/.pk_aliases
   ```
+
+### Optional: DeskPi Lite 4 case drivers
+
+If you're using the DeskPi Lite 4 case on a **Raspberry Pi 4** (not Pi 5),
+pass `--deskpi` to also install its drivers:
+
+```bash
+python3 install.py --deskpi
+```
+
+This clones and runs [DeskPi-Team/deskpi_v1](https://github.com/DeskPi-Team/deskpi_v1)'s
+installer. It's a no-op if the drivers are already installed, and is skipped
+with a warning on anything other than a Pi 4. If a fresh install requires a
+reboot, that's recorded in `~/.deskpi-karaoke/state.toml` — `pk update`/
+`pk devupdate` will reboot automatically afterward (see
+[Installer State Tracking](#installer-state-tracking) below).
 
 ---
 
@@ -170,15 +229,21 @@ You generally do **not** need to manually pull the repo or rerun `install.py` un
 
 ### Installer State Tracking
 
-Installer state is tracked in:
+Installer state is tracked in a single structured file:
 
-```bash 
-~/.deskpi-karaoke/VERSION # last installed release tag (main)
-~/.deskpi-karaoke/.last_applied_sha_dev # last applied dev commit
-~/.deskpi-karaoke/.reboot_required # optional reboot flag
+```bash
+~/.deskpi-karaoke/state.toml
 ```
 
-This allows updates to be:
+which holds:
+- `version` — last installed release tag (main)
+- `last_applied_sha_dev` — last applied dev commit
+- `pikaraoke_version` — currently-installed PiKaraoke package version
+- `reboot_required` — set when `--deskpi` freshly installs drivers; `pk update`/
+  `pk devupdate` reboot automatically when this is `true`
+
+`pk_aliases` reads and writes it via `state_query.py` rather than `cat`/`echo`,
+since bash has no TOML parser of its own. This allows updates to be:
 - Version-aware (main)
 - Commit-aware (dev)
 - Idempotent and safe
@@ -187,15 +252,81 @@ This allows updates to be:
 
 ## 🧹 Uninstall
 
-Standard uninstall:
+Both uninstallers route every deletion through the same `safe_remove()` helper,
+which refuses to delete any path whose name contains `pikaraoke-songs`
+(case-insensitive). **Your song library is always preserved**, no matter
+which uninstaller you run.
+
+### Standard uninstall
+
 ```bash
 python3 uninstall.py
 ```
 
-Full clean uninstall (preserves song library):
+Removes:
+- The current virtual environment (`~/.venv-pikaraoke`)
+- The legacy start script (`~/pikaraoke_start.py`), if present
+- Copied installer assets (`~/autostart_pikaraoke.py`, `~/pikaraoke_ui.py`,
+  `~/state_toml.py`, `~/pikaraoke_icon.png`)
+- The desktop shortcut (`~/Desktop/Start PiKaraoke.desktop`)
+- Logs (`~/pikaraoke_output.log`, `~/pikaraoke_install.log`, `~/pikaraoke_launcher.log`)
+- The autostart config (`~/.config/autostart/pikaraoke.desktop`)
+- The logrotate config (`/etc/logrotate.d/pikaraoke`)
+- `~/.pk_aliases` and its sourced block in `.bashrc`/`.zshrc`
+- Installer state (`~/.deskpi-karaoke/`) and yt-dlp defaults (`~/.config/yt-dlp/`)
+
+### Full clean uninstall
+
 ```bash
 python3 uninstall_clean.py
 ```
+
+A more thorough sweep for legacy/older installs, in addition to everything
+`uninstall.py` removes:
+- Both `~/.venv` and `~/.venv-pikaraoke` (in case an older install used the
+  unqualified name)
+- Legacy shortcuts/scripts (`~/pikaraoke_start_script.sh`,
+  `~/pikaraoke_launcher.sh`, `~/pikaraoke_start.py`)
+- The legacy system-wide autostart path (`/etc/xdg/autostart/pikaraoke.desktop`),
+  from an older install scheme predating the user-level autostart entry above
+- The legacy `~/pikaraoke` folder — **but only if it doesn't contain a
+  `pikaraoke-songs` folder**; if it does, the whole legacy folder is skipped
+  and left in place rather than risk touching your songs
+
+### Optional: DeskPi Lite drivers
+
+Both scripts accept `--deskpi` to also stop/disable the `deskpi.service`,
+and remove `/etc/systemd/system/deskpi.service`, `/usr/lib/deskpi*`, and
+`/etc/deskpi.conf`. Without the flag, DeskPi drivers are left installed:
+
+```bash
+python3 uninstall.py --deskpi
+python3 uninstall_clean.py --deskpi
+```
+
+---
+
+## 🧪 Testing & Linting
+
+The `src/` package has a `pytest` suite that runs safely on any machine (no real
+Raspberry Pi, `apt`/`sudo`, or `$HOME` dotfiles required — filesystem paths and
+subprocess calls are mocked). Formatting and lint checks run via `black` and
+`flake8`. All three run automatically in CI on every push/PR to `main` and `dev`
+(see the badge above), and can be run locally:
+
+```bash
+pip install -r requirements-dev.txt
+
+# run the test suite
+pytest -q
+
+# check formatting (black) and lint (flake8)
+black --check .
+flake8 .
+```
+
+`requirements-dev.txt` is only for local development and CI — it is never
+installed on the Raspberry Pi itself; `install.py` and `src/` remain stdlib-only.
 
 ---
 

@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
 
-import os
-import shutil
-import subprocess
-from pathlib import Path
 import argparse
+import logging
+import subprocess
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from src import constants  # noqa: E402
+from src.assets import remove_rc_block  # noqa: E402
+from src.logging_config import setup_logging  # noqa: E402
+from src.shell import safe_remove, stop_service  # noqa: E402
+
+logger = logging.getLogger(__name__)
 
 
 # --- Parse CLI Arguments ---
@@ -20,63 +29,67 @@ def parse_args():
     return parser.parse_args()
 
 
-# --- Utility Functions ---
-def safe_remove(path: Path):
-    """Removes a file or directory if it exists — skips if 'pikaraoke-songs' is in path"""
-    if not path.exists():
-        return
-
-    if path.is_dir() and "pikaraoke-songs" in path.name.lower():
-        print(f"🚫 Skipping songs folder: {path}")
-        return
-
-    try:
-        if path.is_dir():
-            shutil.rmtree(path)
-            print(f"🗑️ Removed directory: {path}")
-        else:
-            path.unlink()
-            print(f"🗑️ Removed file: {path}")
-    except Exception as e:
-        print(f"❌ Error removing {path}: {e}")
-
-
-def stop_service(name):
-    """Stops and disables a systemd service"""
-    subprocess.run(["sudo", "systemctl", "stop", name], check=False)
-    subprocess.run(["sudo", "systemctl", "disable", name], check=False)
-
-
 # --- Removal Tasks ---
 def remove_current_virtualenv():
-    print("🔍 Removing current virtual environment...")
-    safe_remove(Path.home() / ".venv-pikaraoke")
+    logger.info("🔍 Removing current virtual environment...")
+    safe_remove(constants.VENV_DIR)
 
 
 def remove_start_script():
-    print("🔍 Removing start script...")
-    safe_remove(Path.home() / "pikaraoke_start.py")
+    logger.info("🔍 Removing legacy start script...")
+    safe_remove(constants.HOME / "pikaraoke_start.py")
+
+
+def remove_copied_assets():
+    logger.info("🔍 Removing copied installer assets...")
+    safe_remove(constants.AUTOSTART_SCRIPT_PATH)
+    safe_remove(constants.PIKARAOKE_UI_PATH)
+    safe_remove(constants.STATE_TOML_HELPER_PATH)
+    safe_remove(constants.ICON_PATH)
 
 
 def remove_shortcut():
-    print("🔍 Removing desktop shortcut...")
-    safe_remove(Path.home() / "Desktop" / "Start PiKaraoke.desktop")
+    logger.info("🔍 Removing desktop shortcut...")
+    safe_remove(constants.DESKTOP_SHORTCUT_PATH)
 
 
 def remove_logs():
-    print("🔍 Removing logs...")
-    home = Path.home()
+    logger.info("🔍 Removing logs...")
+    home = constants.HOME
     safe_remove(home / "pikaraoke_output.log")
     safe_remove(home / "pikaraoke_install.log")
+    safe_remove(home / "pikaraoke_launcher.log")
 
 
 def remove_autostart():
-    print("🔍 Removing autostart config...")
-    safe_remove(Path("/etc/xdg/autostart/pikaraoke.desktop"))
+    logger.info("🔍 Removing autostart config...")
+    safe_remove(constants.DESKTOP_FILE_PATH)
+
+
+def remove_logrotate_config():
+    logger.info("🔍 Removing logrotate config...")
+    subprocess.run(["sudo", "rm", "-f", "/etc/logrotate.d/pikaraoke"], check=False)
+
+
+def remove_pk_aliases():
+    logger.info("🔍 Removing pk aliases...")
+    safe_remove(constants.PK_ALIASES_PATH)
+    remove_rc_block(constants.HOME / ".bashrc")
+    remove_rc_block(constants.HOME / ".zshrc")
+
+
+def remove_state_dir():
+    logger.info("🔍 Removing installer state...")
+    safe_remove(constants.STATE_DIR)
+
+
+def remove_ytdlp_config():
+    logger.info("🔍 Removing yt-dlp config...")
+    safe_remove(constants.YTDLP_CONFIG_DIR)
 
 
 def remove_deskpi_drivers():
-    print("🧹 Removing DeskPi Lite drivers...")
+    logger.info("🧹 Removing DeskPi Lite drivers...")
     stop_service("deskpi.service")
     subprocess.run(
         ["sudo", "rm", "-f", "/etc/systemd/system/deskpi.service"], check=False
@@ -87,21 +100,27 @@ def remove_deskpi_drivers():
 
 # --- Main Entry Point ---
 def main():
+    setup_logging()
     args = parse_args()
-    print("\n🧹 PiKaraoke Uninstaller (v0.3.0+) Starting...\n")
+    logger.info("\n🧹 PiKaraoke Uninstaller (v0.3.0+) Starting...\n")
 
     remove_current_virtualenv()
     remove_start_script()
+    remove_copied_assets()
     remove_shortcut()
     remove_logs()
     remove_autostart()
+    remove_logrotate_config()
+    remove_pk_aliases()
+    remove_state_dir()
+    remove_ytdlp_config()
 
     if args.deskpi:
         remove_deskpi_drivers()
     else:
-        print("💡 DeskPi drivers preserved (use --deskpi to remove)")
+        logger.info("💡 DeskPi drivers preserved (use --deskpi to remove)")
 
-    print("\n✅ PiKaraoke has been uninstalled. Your songs are safe 🎵\n")
+    logger.info("\n✅ PiKaraoke has been uninstalled. Your songs are safe 🎵\n")
 
 
 if __name__ == "__main__":

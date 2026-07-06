@@ -1,0 +1,58 @@
+"""External runtime setup: Deno (JS runtime for yt-dlp) and yt-dlp defaults."""
+
+import logging
+import shutil
+
+from src import constants
+from src.shell import log_section, run
+
+logger = logging.getLogger(__name__)
+
+
+def install_deno():
+    log_section("Installing Deno (JS runtime for yt-dlp)")
+
+    # If already installed, skip
+    if shutil.which("deno"):
+        run(["deno", "--version"], check=False)
+        logger.info("✅ Deno already installed.")
+        return
+
+    # Install Deno to ~/.deno/bin/deno
+    # Use bash -lc so ~ expands correctly and we can use pipes
+    run("curl -fsSL https://deno.land/x/install/install.sh | sh", check=False)
+
+    deno_bin = constants.HOME / ".deno" / "bin"
+    deno_exe = deno_bin / "deno"
+
+    if deno_exe.exists():
+        logger.info("✅ Deno installed at %s", deno_exe)
+        run([str(deno_exe), "--version"], check=False)
+    else:
+        logger.warning("⚠️ Deno install ran but binary missing at ~/.deno/bin/deno")
+
+    # Ensure PATH for future login shells (helpful, but not sufficient for autostart)
+    profile = constants.HOME / ".profile"
+    export_line = 'export PATH="$HOME/.deno/bin:$PATH"'
+    try:
+        profile.touch(exist_ok=True)
+        text = profile.read_text(encoding="utf-8")
+        if ".deno/bin" not in text:
+            profile.write_text(
+                text.rstrip() + "\n" + export_line + "\n", encoding="utf-8"
+            )
+            logger.info("✅ Added Deno PATH to %s", profile)
+    except Exception as e:
+        logger.warning("⚠️ Could not update %s: %s", profile, e)
+
+
+def install_ytdlp_config():
+    log_section("Configuring yt-dlp defaults")
+    cfg_dir = constants.YTDLP_CONFIG_DIR
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    cfg_file = cfg_dir / "config"
+    cfg_file.write_text(
+        "--js-runtimes deno\n" "-t mp4\n" "--merge-output-format mp4\n",
+        encoding="utf-8",
+    )
+    logger.info("✅ Wrote %s", cfg_file)
