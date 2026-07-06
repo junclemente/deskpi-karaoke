@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.6.2] - 2026-07-06
+
+### 🐛 Fixes
+
+- **Autostart's update check no longer overrides the `config.toml` pikaraoke
+  pin.** `pikaraoke==1.18.0` is pinned there because 1.19.0 has a breaking
+  splash-screen bug, but `assets/autostart_pikaraoke.py`'s `check_and_update()`
+  ignored that pin and always chased PyPI's absolute latest release. That let
+  the buggy 1.19.0 (plus its `flask>=3.1.0`/`flask-smorest` deps) get silently
+  installed on boot, only for the next `install.py`/`pk update`/`pk devupdate`
+  run to force it back down to 1.18.0 — downgrading Flask along with it and
+  leaving `flask-smorest` orphaned with an incompatible Flask, which is what
+  produced pip's "dependency conflicts" warning during install.
+  - `src/constants.py` now parses `PIKARAOKE_PIN` out of `config.toml`'s
+    `pikaraoke==X.Y.Z` core-package entry.
+  - `src/state.py`'s `record_state()` writes it to `state.toml` as
+    `pikaraoke_pin` on every install.
+  - `autostart_pikaraoke.py`'s `check_and_update()` now targets that pin
+    directly (upgrading *or* downgrading to match it) instead of querying
+    PyPI, when one is recorded; falls back to the old latest-chasing
+    behavior only if no pin is present.
+
 ## [v0.6.1] - 2026-07-06
 
 ### 🚀 New Features

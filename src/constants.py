@@ -28,3 +28,11 @@ PY_MIN = tuple(
 )
 PKG_CORE = _config["install"]["packages"]["core"]
 APT_PKGS = _config["install"]["packages"]["apt"]
+
+# Pinned pikaraoke version (e.g. "1.18.0" from "pikaraoke==1.18.0"), if any.
+# Recorded to state.toml so autostart_pikaraoke.py's update check can target
+# it instead of blindly chasing PyPI's latest release.
+PIKARAOKE_PIN = next(
+    (pkg.split("==", 1)[1] for pkg in PKG_CORE if pkg.startswith("pikaraoke==")),
+    None,
+)

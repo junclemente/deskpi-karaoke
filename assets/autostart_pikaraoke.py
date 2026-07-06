@@ -49,7 +49,7 @@ except Exception:
 
 
 from pikaraoke_ui import show_error, show_info
-from state_toml import save_state
+from state_toml import load_state, save_state
 
 CHECK_INTERVAL = 5
 INITIAL_WAIT = 10
@@ -111,6 +111,13 @@ def get_latest_pikaraoke_version(timeout=5):
         return None
 
 
+def get_pinned_pikaraoke_version():
+    """Read the pikaraoke version pinned in config.toml, recorded to state.toml
+    at install time. Returns None if the installed config.toml has no pin."""
+    pin = load_state(STATE_FILE).get("pikaraoke_pin")
+    return Version(pin) if pin else None
+
+
 def store_pikaraoke_version(version):
     """Persist the currently-installed pikaraoke version, readable without a venv pip call."""
     try:
@@ -149,8 +156,25 @@ def update_pikaraoke(target_version):
 
 
 def check_and_update():
-    """Fetch the latest version from PyPI and upgrade if local version is outdated."""
+    """Bring pikaraoke to the version config.toml pins, if one is recorded;
+    otherwise fall back to chasing PyPI's latest release."""
     installed = get_installed_pikaraoke_version()
+    pin = get_pinned_pikaraoke_version()
+
+    if pin is not None:
+        if installed == pin:
+            store_pikaraoke_version(installed)
+            return False
+        show_info(
+            f"🔄 Setting pikaraoke {installed} → pinned {pin}\n"
+            "Updating before launch...",
+            duration=2,
+        )
+        update_pikaraoke(pin)
+        installed = get_installed_pikaraoke_version()
+        store_pikaraoke_version(installed)
+        return True
+
     latest = get_latest_pikaraoke_version()
 
     # If PyPI is down or unreachable, gracefully skip updating and launch anyway

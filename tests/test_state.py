@@ -100,6 +100,28 @@ def test_record_state_main_branch_no_tag_writes_fallback_version(tmp_path, monke
     assert state.load_state()["version"] == "0.0.0"
 
 
+def test_record_state_writes_pikaraoke_pin(tmp_path, monkeypatch):
+    state_dir = tmp_path / ".deskpi-karaoke"
+    monkeypatch.setattr(state.constants, "STATE_DIR", state_dir)
+    monkeypatch.setattr(state.constants, "PIKARAOKE_PIN", "1.18.0")
+    monkeypatch.setattr(state, "git", lambda cmd, default=None: default or "")
+
+    state.record_state()
+
+    assert state.load_state()["pikaraoke_pin"] == "1.18.0"
+
+
+def test_record_state_skips_pikaraoke_pin_when_unset(tmp_path, monkeypatch):
+    state_dir = tmp_path / ".deskpi-karaoke"
+    monkeypatch.setattr(state.constants, "STATE_DIR", state_dir)
+    monkeypatch.setattr(state.constants, "PIKARAOKE_PIN", None)
+    monkeypatch.setattr(state, "git", lambda cmd, default=None: default or "")
+
+    state.record_state()
+
+    assert "pikaraoke_pin" not in state.load_state()
+
+
 def test_record_state_removes_legacy_flat_files(tmp_path, monkeypatch):
     state_dir = tmp_path / ".deskpi-karaoke"
     state_dir.mkdir(parents=True)
