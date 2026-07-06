@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 
 from src import constants
-from src.shell import log_section
+from src.shell import log_section, run
 
 logger = logging.getLogger(__name__)
 
@@ -51,12 +51,22 @@ Type=Application
     # LXDE/PCManFM refuses to run a double-clicked .desktop file that isn't
     # marked executable, showing a "trust" prompt instead of launching it.
     constants.DESKTOP_SHORTCUT_PATH.chmod(0o755)
+    mark_desktop_file_trusted(constants.DESKTOP_SHORTCUT_PATH)
     # pk_aliases
     aliases_src = constants.ASSETS_DIR / "pk_aliases"
     if aliases_src.exists():
         shutil.copy2(aliases_src, constants.HOME / ".pk_aliases")
         ensure_rc_sourced(constants.HOME / ".bashrc")
         ensure_rc_sourced(constants.HOME / ".zshrc")
+
+
+def mark_desktop_file_trusted(path: Path):
+    """Set the GIO 'trusted' flag PCManFM checks before launching a .desktop
+    file without prompting "Execute/Execute in Terminal/Open/Cancel"."""
+    try:
+        run(["gio", "set", str(path), "metadata::trusted", "yes"], check=False)
+    except Exception as e:
+        logger.warning("⚠️  Could not mark %s as trusted: %s", path, e)
 
 
 def ensure_rc_sourced(rc_path: Path):

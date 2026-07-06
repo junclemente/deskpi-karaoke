@@ -1,3 +1,5 @@
+from unittest.mock import Mock
+
 from src import assets
 
 
@@ -32,6 +34,18 @@ def test_ensure_rc_sourced_is_idempotent(tmp_path):
     assert rc.read_text().count("# >>> deskpi-karaoke aliases >>>") == 1
 
 
+def test_mark_desktop_file_trusted_swallows_missing_gio(tmp_path, monkeypatch):
+    path = tmp_path / "Start PiKaraoke.desktop"
+    path.write_text("[Desktop Entry]\n")
+
+    def raise_missing_binary(*args, **kwargs):
+        raise FileNotFoundError("gio not found")
+
+    monkeypatch.setattr(assets, "run", raise_missing_binary)
+
+    assets.mark_desktop_file_trusted(path)  # should not raise
+
+
 def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch):
     home = tmp_path / "home"
     home.mkdir()
@@ -55,6 +69,8 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
     monkeypatch.setattr(assets.constants, "DESKTOP_FILE_PATH", desktop_file)
     monkeypatch.setattr(assets.constants, "DESKTOP_DIR", desktop_dir)
     monkeypatch.setattr(assets.constants, "DESKTOP_SHORTCUT_PATH", desktop_shortcut)
+    fake_run = Mock()
+    monkeypatch.setattr(assets, "run", fake_run)
 
     assets.copy_assets()
 
@@ -73,6 +89,10 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
         f"Exec={venv_dir}/bin/python {home}/autostart_pikaraoke.py" in shortcut_content
     )
     assert desktop_shortcut.stat().st_mode & 0o111 == 0o111
+    fake_run.assert_called_once_with(
+        ["gio", "set", str(desktop_shortcut), "metadata::trusted", "yes"],
+        check=False,
+    )
 
     assert "# >>> deskpi-karaoke aliases >>>" in (home / ".bashrc").read_text()
     assert "# >>> deskpi-karaoke aliases >>>" in (home / ".zshrc").read_text()

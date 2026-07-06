@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.6.4] - 2026-07-06
+
+### 🐛 Fixes
+
+- **Desktop icon no longer prompts "Execute / Execute in Terminal / Open /
+  Cancel" on double-click.** PCManFM (Raspberry Pi OS's file manager) treats
+  a `.desktop` file as an untrusted script — regardless of its executable
+  bit — until its GIO `metadata::trusted` attribute is set to `yes`.
+  `src/assets.py`'s `copy_assets()` now calls `gio set <path>
+  metadata::trusted yes` on `~/Desktop/Start PiKaraoke.desktop` right after
+  `chmod`, via a new `mark_desktop_file_trusted()` helper (silently
+  skipped if `gio` isn't available). Verified directly: after `gio set`,
+  `gio info -a metadata::trusted` reports `yes` on the shortcut.
+
 ## [v0.6.3] - 2026-07-06
 
 ### 🐛 Fixes
