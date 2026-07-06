@@ -109,9 +109,26 @@ The installer will:
   ```
   ~/autostart_pikaraoke.py
   ~/pikaraoke_ui.py
+  ~/state_toml.py
   ~/.config/autostart/pikaraoke.desktop
   ~/.pk_aliases
   ```
+
+### Optional: DeskPi Lite 4 case drivers
+
+If you're using the DeskPi Lite 4 case on a **Raspberry Pi 4** (not Pi 5),
+pass `--deskpi` to also install its drivers:
+
+```bash
+python3 install.py --deskpi
+```
+
+This clones and runs [DeskPi-Team/deskpi_v1](https://github.com/DeskPi-Team/deskpi_v1)'s
+installer. It's a no-op if the drivers are already installed, and is skipped
+with a warning on anything other than a Pi 4. If a fresh install requires a
+reboot, that's recorded in `~/.deskpi-karaoke/state.toml` — `pk update`/
+`pk devupdate` will reboot automatically afterward (see
+[Installer State Tracking](#installer-state-tracking) below).
 
 ---
 
@@ -185,15 +202,21 @@ You generally do **not** need to manually pull the repo or rerun `install.py` un
 
 ### Installer State Tracking
 
-Installer state is tracked in:
+Installer state is tracked in a single structured file:
 
-```bash 
-~/.deskpi-karaoke/VERSION # last installed release tag (main)
-~/.deskpi-karaoke/.last_applied_sha_dev # last applied dev commit
-~/.deskpi-karaoke/.reboot_required # optional reboot flag
+```bash
+~/.deskpi-karaoke/state.toml
 ```
 
-This allows updates to be:
+which holds:
+- `version` — last installed release tag (main)
+- `last_applied_sha_dev` — last applied dev commit
+- `pikaraoke_version` — currently-installed PiKaraoke package version
+- `reboot_required` — set when `--deskpi` freshly installs drivers; `pk update`/
+  `pk devupdate` reboot automatically when this is `true`
+
+`pk_aliases` reads and writes it via `state_query.py` rather than `cat`/`echo`,
+since bash has no TOML parser of its own. This allows updates to be:
 - Version-aware (main)
 - Commit-aware (dev)
 - Idempotent and safe
@@ -202,14 +225,50 @@ This allows updates to be:
 
 ## 🧹 Uninstall
 
-Standard uninstall:
+Both uninstallers route every deletion through the same `safe_remove()` helper,
+which refuses to delete any path whose name contains `pikaraoke-songs`
+(case-insensitive). **Your song library is always preserved**, no matter
+which uninstaller you run.
+
+### Standard uninstall
+
 ```bash
 python3 uninstall.py
 ```
 
-Full clean uninstall (preserves song library):
+Removes:
+- The current virtual environment (`~/.venv-pikaraoke`)
+- The legacy start script (`~/pikaraoke_start.py`), if present
+- The desktop shortcut (`~/Desktop/Start PiKaraoke.desktop`)
+- Logs (`~/pikaraoke_output.log`, `~/pikaraoke_install.log`, `~/pikaraoke_launcher.log`)
+- The autostart config (`/etc/xdg/autostart/pikaraoke.desktop`)
+- The logrotate config (`/etc/logrotate.d/pikaraoke`)
+
+### Full clean uninstall
+
 ```bash
 python3 uninstall_clean.py
+```
+
+A more thorough sweep for legacy/older installs, in addition to everything
+`uninstall.py` removes:
+- Both `~/.venv` and `~/.venv-pikaraoke` (in case an older install used the
+  unqualified name)
+- Legacy shortcuts/scripts (`~/pikaraoke_start_script.sh`,
+  `~/pikaraoke_launcher.sh`, `~/pikaraoke_start.py`)
+- The legacy `~/pikaraoke` folder — **but only if it doesn't contain a
+  `pikaraoke-songs` folder**; if it does, the whole legacy folder is skipped
+  and left in place rather than risk touching your songs
+
+### Optional: DeskPi Lite drivers
+
+Both scripts accept `--deskpi` to also stop/disable the `deskpi.service`,
+and remove `/etc/systemd/system/deskpi.service`, `/usr/lib/deskpi*`, and
+`/etc/deskpi.conf`. Without the flag, DeskPi drivers are left installed:
+
+```bash
+python3 uninstall.py --deskpi
+python3 uninstall_clean.py --deskpi
 ```
 
 ---

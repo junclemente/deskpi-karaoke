@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.6.0] - 2026-07-06
+
+### 🚀 New Features
+
+- **Restored `--deskpi` DeskPi Lite 4 driver installation**, previously
+  present in an old tagged release and a since-diverged backup branch but
+  missing from `install.py` on `dev`/`main`. New `src/deskpi.py`:
+  Pi-4-only guard (`/proc/device-tree/model`), skips if already installed
+  (`/usr/lib/deskpi` or `systemctl is-enabled deskpi.service` — the same
+  markers `uninstall.py`/`uninstall_clean.py`'s `--deskpi` already tears
+  down), clones `DeskPi-Team/deskpi_v1` into a fresh temp dir, runs its
+  `install.sh`, cleans up after itself.
+- `src/cli.py` gained `parse_args()` (`--deskpi`, `store_true`); `install.py`
+  itself is unchanged and still flag-free — `cli.run()` parses args
+  internally. When a fresh driver install may need a reboot, that's now
+  recorded via `state.toml`'s `reboot_required` field, which activates the
+  `pk_aliases` reboot-on-flag mechanism that has existed since the TOML
+  state migration but had nothing setting it until now.
+
+### 🛠 Improvements
+
+- Deleted `requirements.txt`: its one dependency (`packaging>=24.0`) was
+  already duplicated in `config.toml`'s `core` package list, and nothing in
+  the repo actually installed from it — `install.py` installs from
+  `config.toml` directly.
+- Fixed two docs left stale by the earlier TOML-state migration:
+  `README.md`'s Installer State Tracking section and `CLAUDE.md` still
+  described the old flat state files instead of `state.toml`.
+
 ## [v0.5.1] - 2026-07-05
 
 ### 🛠 Improvements
