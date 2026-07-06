@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.6.1] - 2026-07-06
+
+### 🚀 New Features
+
+- **Restored the `~/Desktop/Start PiKaraoke.desktop` clickable icon.**
+  `uninstall.py`/`uninstall_clean.py` already cleaned this path up as a
+  legacy artifact, but nothing on `dev`/`main` created it — `install.py`
+  only wrote the `~/.config/autostart` entry. `src/assets.py`'s
+  `copy_assets()` now also writes this desktop shortcut (reusing the same
+  `~/autostart_pikaraoke.py` launcher as autostart, so internet-wait,
+  update-check, and logging behave identically whether PiKaraoke starts on
+  boot or via a manual double-click) and marks it executable, since
+  LXDE/PCManFM refuses to run a double-clicked `.desktop` file that isn't.
+
 ## [v0.6.0] - 2026-07-06
 
 ### 🚀 New Features

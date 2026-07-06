@@ -48,6 +48,7 @@ def main(args):
     log_section("All done")
     logger.info("• Venv       : %s", constants.VENV_DIR)
     logger.info("• Autostart  : %s", constants.DESKTOP_FILE_PATH)
+    logger.info("• Desktop icon: %s", constants.DESKTOP_SHORTCUT_PATH)
     logger.info("• State dir  : %s", constants.STATE_DIR)
     logger.info(
         "\nYou may need to log out and back in (or reboot) for autostart "

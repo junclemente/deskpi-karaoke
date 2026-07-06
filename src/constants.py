@@ -15,6 +15,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 ASSETS_DIR = REPO_ROOT / "assets"
 AUTOSTART_DIR = HOME / ".config" / "autostart"
 DESKTOP_FILE_PATH = AUTOSTART_DIR / "pikaraoke.desktop"
+DESKTOP_DIR = HOME / "Desktop"
+DESKTOP_SHORTCUT_PATH = DESKTOP_DIR / "Start PiKaraoke.desktop"
 
 CONFIG_FILE = REPO_ROOT / "config.toml"
 

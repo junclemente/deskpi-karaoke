@@ -22,6 +22,7 @@ It focuses on:
 
 - 💻 **One-command installation** (`install.py`)
 - 🔁 **Automatic startup on boot** (Desktop autostart)
+- 🖱️ **One-click manual start** (`~/Desktop/Start PiKaraoke.desktop` icon)
 - 🌐 **Internet-aware launch**
   - waits for connectivity before starting PiKaraoke
   - user-friendly notifications if offline
@@ -111,6 +112,7 @@ The installer will:
   ~/pikaraoke_ui.py
   ~/state_toml.py
   ~/.config/autostart/pikaraoke.desktop
+  ~/Desktop/Start PiKaraoke.desktop
   ~/.pk_aliases
   ```
 

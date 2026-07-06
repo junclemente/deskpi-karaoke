@@ -36,6 +36,21 @@ Type=Application
 X-GNOME-Autostart-enabled=true
 """
     )
+    # desktop icon the user can click to launch PiKaraoke on demand
+    constants.DESKTOP_DIR.mkdir(parents=True, exist_ok=True)
+    constants.DESKTOP_SHORTCUT_PATH.write_text(
+        f"""[Desktop Entry]
+Name=Start PiKaraoke
+Comment=Launch PiKaraoke
+Exec={constants.VENV_DIR}/bin/python {constants.HOME}/autostart_pikaraoke.py
+Icon=utilities-terminal
+Terminal=false
+Type=Application
+"""
+    )
+    # LXDE/PCManFM refuses to run a double-clicked .desktop file that isn't
+    # marked executable, showing a "trust" prompt instead of launching it.
+    constants.DESKTOP_SHORTCUT_PATH.chmod(0o755)
     # pk_aliases
     aliases_src = constants.ASSETS_DIR / "pk_aliases"
     if aliases_src.exists():

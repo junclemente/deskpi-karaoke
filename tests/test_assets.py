@@ -45,12 +45,16 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
     venv_dir = home / ".venv-pikaraoke"
     autostart_dir = home / ".config" / "autostart"
     desktop_file = autostart_dir / "pikaraoke.desktop"
+    desktop_dir = home / "Desktop"
+    desktop_shortcut = desktop_dir / "Start PiKaraoke.desktop"
 
     monkeypatch.setattr(assets.constants, "HOME", home)
     monkeypatch.setattr(assets.constants, "ASSETS_DIR", assets_dir)
     monkeypatch.setattr(assets.constants, "VENV_DIR", venv_dir)
     monkeypatch.setattr(assets.constants, "AUTOSTART_DIR", autostart_dir)
     monkeypatch.setattr(assets.constants, "DESKTOP_FILE_PATH", desktop_file)
+    monkeypatch.setattr(assets.constants, "DESKTOP_DIR", desktop_dir)
+    monkeypatch.setattr(assets.constants, "DESKTOP_SHORTCUT_PATH", desktop_shortcut)
 
     assets.copy_assets()
 
@@ -63,6 +67,12 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
     assert (
         f"Exec={venv_dir}/bin/python {home}/autostart_pikaraoke.py" in desktop_content
     )
+
+    shortcut_content = desktop_shortcut.read_text()
+    assert (
+        f"Exec={venv_dir}/bin/python {home}/autostart_pikaraoke.py" in shortcut_content
+    )
+    assert desktop_shortcut.stat().st_mode & 0o111 == 0o111
 
     assert "# >>> deskpi-karaoke aliases >>>" in (home / ".bashrc").read_text()
     assert "# >>> deskpi-karaoke aliases >>>" in (home / ".zshrc").read_text()
