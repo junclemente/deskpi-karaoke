@@ -44,8 +44,33 @@ It focuses on:
 - DeskPi Lite 4 case (recommended)
 
 **Software**
-- Raspberry Pi OS **Bookworm – Desktop**
+- Raspberry Pi OS **Bookworm – Desktop** (not Lite — autostart and the
+  clickable desktop icon both depend on the LXDE/PCManFM desktop session)
+- Python 3.11+ (ships by default on Bookworm; `install.py` hard-exits if
+  it isn't met)
+- `git` (ships by default on Bookworm Desktop; needed to clone this repo
+  and for `pk update`/`pk devupdate`)
 - Internet connection (Ethernet or Wi-Fi)
+
+**User account**
+- A user account with **passwordless sudo (`NOPASSWD`)**. This is the
+  account you create when imaging the SD card (e.g. via Raspberry Pi
+  Imager) — the username/password are entirely up to whoever sets up that
+  particular Pi (these instructions were tested with a `pi` user, password
+  `karaoke`, but any username works as long as it has passwordless sudo).
+  Raspberry Pi OS grants the account created at imaging time passwordless
+  sudo by default, so this is usually already satisfied — but since the OS
+  setup is fully customizable, it's worth calling out explicitly, and
+  re-adding if a prior hardening pass removed it.
+  - **This is required, not just convenient — there's no fallback if it's
+    missing.** `install.py` runs several `sudo` steps (installing apt
+    packages, writing `/etc/logrotate.d/pikaraoke`, and — with
+    `--deskpi` — installing/removing DeskPi Lite drivers and an automatic
+    `sudo reboot` afterward) without any password-retry or success
+    verification. If sudo ever needs a password it doesn't have — no
+    passwordless sudo, no attached terminal, an expired sudo session
+    mid-run — the affected step fails silently and the install can end up
+    incomplete with no obvious error.
 
 > ℹ️  
 > PiKaraoke’s own runtime requirements (Python, ffmpeg, codecs, etc.)  
