@@ -1,11 +1,12 @@
 """Copies autostart/UI assets and desktop entry into $HOME, patches shell rc files."""
 
+import configparser
 import logging
 import shutil
 from pathlib import Path
 
 from src import constants
-from src.shell import log_section, run
+from src.shell import log_section
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ Type=Application
     # LXDE/PCManFM refuses to run a double-clicked .desktop file that isn't
     # marked executable, showing a "trust" prompt instead of launching it.
     constants.DESKTOP_SHORTCUT_PATH.chmod(0o755)
-    mark_desktop_file_trusted(constants.DESKTOP_SHORTCUT_PATH)
+    enable_quick_exec()
     # pk_aliases
     aliases_src = constants.ASSETS_DIR / "pk_aliases"
     if aliases_src.exists():
@@ -60,13 +61,24 @@ Type=Application
         ensure_rc_sourced(constants.HOME / ".zshrc")
 
 
-def mark_desktop_file_trusted(path: Path):
-    """Set the GIO 'trusted' flag PCManFM checks before launching a .desktop
-    file without prompting "Execute/Execute in Terminal/Open/Cancel"."""
+def enable_quick_exec():
+    """Set libfm's quick_exec so PCManFM launches an executable .desktop file
+    directly instead of prompting "Execute/Execute in Terminal/Open/Cancel"
+    on every double-click — same effect as its Edit > Preferences > "Don't
+    ask options on launch executable file" checkbox."""
+    path = constants.LIBFM_CONFIG_PATH
     try:
-        run(["gio", "set", str(path), "metadata::trusted", "yes"], check=False)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        config = configparser.RawConfigParser()
+        if path.exists():
+            config.read(path)
+        if not config.has_section("config"):
+            config.add_section("config")
+        config.set("config", "quick_exec", "1")
+        with path.open("w") as f:
+            config.write(f, space_around_delimiters=False)
     except Exception as e:
-        logger.warning("⚠️  Could not mark %s as trusted: %s", path, e)
+        logger.warning("⚠️  Could not enable quick_exec in %s: %s", path, e)
 
 
 def ensure_rc_sourced(rc_path: Path):

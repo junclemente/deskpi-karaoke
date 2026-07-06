@@ -17,6 +17,7 @@ AUTOSTART_DIR = HOME / ".config" / "autostart"
 DESKTOP_FILE_PATH = AUTOSTART_DIR / "pikaraoke.desktop"
 DESKTOP_DIR = HOME / "Desktop"
 DESKTOP_SHORTCUT_PATH = DESKTOP_DIR / "Start PiKaraoke.desktop"
+LIBFM_CONFIG_PATH = HOME / ".config" / "libfm" / "libfm.conf"
 
 CONFIG_FILE = REPO_ROOT / "config.toml"
 

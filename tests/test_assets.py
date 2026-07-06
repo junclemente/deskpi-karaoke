@@ -1,5 +1,3 @@
-from unittest.mock import Mock
-
 from src import assets
 
 
@@ -34,16 +32,47 @@ def test_ensure_rc_sourced_is_idempotent(tmp_path):
     assert rc.read_text().count("# >>> deskpi-karaoke aliases >>>") == 1
 
 
-def test_mark_desktop_file_trusted_swallows_missing_gio(tmp_path, monkeypatch):
-    path = tmp_path / "Start PiKaraoke.desktop"
-    path.write_text("[Desktop Entry]\n")
+def test_enable_quick_exec_creates_config_when_absent(tmp_path, monkeypatch):
+    libfm_conf = tmp_path / ".config" / "libfm" / "libfm.conf"
+    monkeypatch.setattr(assets.constants, "LIBFM_CONFIG_PATH", libfm_conf)
 
-    def raise_missing_binary(*args, **kwargs):
-        raise FileNotFoundError("gio not found")
+    assets.enable_quick_exec()
 
-    monkeypatch.setattr(assets, "run", raise_missing_binary)
+    text = libfm_conf.read_text()
+    assert "[config]" in text
+    assert "quick_exec=1" in text
 
-    assets.mark_desktop_file_trusted(path)  # should not raise
+
+def test_enable_quick_exec_preserves_existing_settings(tmp_path, monkeypatch):
+    libfm_conf = tmp_path / ".config" / "libfm" / "libfm.conf"
+    libfm_conf.parent.mkdir(parents=True)
+    libfm_conf.write_text(
+        "[config]\n"
+        "terminal=lxterminal -e %s\n"
+        "single_click=0\n"
+        "\n"
+        "[ui]\n"
+        "big_icon_size=48\n"
+    )
+    monkeypatch.setattr(assets.constants, "LIBFM_CONFIG_PATH", libfm_conf)
+
+    assets.enable_quick_exec()
+
+    text = libfm_conf.read_text()
+    assert "terminal=lxterminal -e %s" in text
+    assert "single_click=0" in text
+    assert "big_icon_size=48" in text
+    assert "quick_exec=1" in text
+
+
+def test_enable_quick_exec_is_idempotent(tmp_path, monkeypatch):
+    libfm_conf = tmp_path / ".config" / "libfm" / "libfm.conf"
+    monkeypatch.setattr(assets.constants, "LIBFM_CONFIG_PATH", libfm_conf)
+
+    assets.enable_quick_exec()
+    assets.enable_quick_exec()
+
+    assert libfm_conf.read_text().count("quick_exec") == 1
 
 
 def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch):
@@ -69,8 +98,8 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
     monkeypatch.setattr(assets.constants, "DESKTOP_FILE_PATH", desktop_file)
     monkeypatch.setattr(assets.constants, "DESKTOP_DIR", desktop_dir)
     monkeypatch.setattr(assets.constants, "DESKTOP_SHORTCUT_PATH", desktop_shortcut)
-    fake_run = Mock()
-    monkeypatch.setattr(assets, "run", fake_run)
+    libfm_conf = home / ".config" / "libfm" / "libfm.conf"
+    monkeypatch.setattr(assets.constants, "LIBFM_CONFIG_PATH", libfm_conf)
 
     assets.copy_assets()
 
@@ -89,10 +118,7 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
         f"Exec={venv_dir}/bin/python {home}/autostart_pikaraoke.py" in shortcut_content
     )
     assert desktop_shortcut.stat().st_mode & 0o111 == 0o111
-    fake_run.assert_called_once_with(
-        ["gio", "set", str(desktop_shortcut), "metadata::trusted", "yes"],
-        check=False,
-    )
+    assert "quick_exec=1" in libfm_conf.read_text()
 
     assert "# >>> deskpi-karaoke aliases >>>" in (home / ".bashrc").read_text()
     assert "# >>> deskpi-karaoke aliases >>>" in (home / ".zshrc").read_text()

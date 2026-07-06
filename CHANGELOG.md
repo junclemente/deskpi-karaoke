@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.6.5] - 2026-07-06
+
+### 🐛 Fixes
+
+- **The real fix for the desktop icon's "Execute / Execute in Terminal /
+  Open / Cancel" prompt** — v0.6.4's `gio set metadata::trusted` was based
+  on a wrong assumption (that's a GNOME/Nautilus convention) and confirmed
+  not to work on Raspberry Pi OS's PCManFM even after `pk devupdate` +
+  reboot. Traced the actual gate through libfm's source
+  (`fm-gtk-file-launcher.c`'s `on_exec_file()`): the dialog is skipped only
+  when `fm_config->quick_exec` is true, which maps to `quick_exec=1` under
+  `[config]` in `~/.config/libfm/libfm.conf` — the same setting toggled by
+  PCManFM's Edit → Preferences → "Don't ask options on launch executable
+  file" checkbox.
+  - `src/constants.py` gained `LIBFM_CONFIG_PATH`.
+  - `src/assets.py`'s new `enable_quick_exec()` replaces the removed
+    `mark_desktop_file_trusted()`, read-modify-writing `libfm.conf` via
+    `configparser.RawConfigParser` (raw, not interpolating, so existing
+    `%`-bearing values like `terminal=lxterminal -e %s` survive intact) —
+    idempotent, preserves any other sections/keys already in the file,
+    creates it if missing.
+  - Verified directly against a simulated existing `libfm.conf` (with a
+    `%s`-bearing `terminal=` line) and a fresh one with none: both come out
+    with every prior setting intact plus `quick_exec=1` added exactly once.
+
 ## [v0.6.4] - 2026-07-06
 
 ### 🐛 Fixes
