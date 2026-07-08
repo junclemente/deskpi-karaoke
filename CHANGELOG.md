@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.8.0] - 2026-07-08
+
+### 🚀 New Features
+
+- **`autostart_pikaraoke.py` now version-checks and updates yt-dlp on its own
+  schedule**, independent of pikaraoke. Previously, yt-dlp was only ever
+  upgraded as a side effect of the pikaraoke update step bumping pikaraoke's
+  own version — so if pikaraoke's pin stayed put (the common case, since
+  yt-dlp ships far more frequently to keep up with site extractor changes),
+  yt-dlp quietly went stale until someone ran the manual `pikaraoke`
+  update-yt-dlp flow by hand.
+  - The old pikaraoke-only `get_installed_pikaraoke_version()` /
+    `get_latest_pikaraoke_version()` / `update_pikaraoke()` /
+    `check_and_update()` functions were generalized into
+    `get_installed_version(package)` / `get_latest_version(pypi_url)` /
+    `update_package(package, target_version)`, driven by a `PACKAGES` table
+    covering both pikaraoke and yt-dlp, so the two are checked/updated
+    through one code path instead of duplicated per-package logic.
+  - **PyPI polling is throttled and batched.** Each package's "latest
+    version" lookup only hits PyPI once per `VERSION_CHECK_INTERVAL` (6h),
+    tracked via new `pikaraoke_checked_at` / `ytdlp_checked_at` keys in
+    `state.toml` — a kiosk device reboots far more often than either
+    package cuts a release, so most boots now skip PyPI entirely. When more
+    than one package *is* due, their PyPI requests run concurrently via
+    `ThreadPoolExecutor` instead of back-to-back, so a full check never
+    costs more than the slower of the two requests.
+  - The installed yt-dlp version is persisted to `~/.deskpi-karaoke/state.toml`
+    as `ytdlp_version`, and surfaced via `pk version` alongside
+    `pikaraoke_version`.
+  - Verified with a mocked smoke test: concurrent PyPI calls complete in the
+    time of the slower single call (not the sum), a second check within the
+    TTL window makes zero PyPI requests while still refreshing the recorded
+    installed versions, and a check after the TTL expires polls PyPI again.
+
 ## [v0.7.0] - 2026-07-06
 
 ### 🐛 Fixes

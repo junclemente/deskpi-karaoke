@@ -100,6 +100,7 @@ pk() {
       echo "🏷️ Latest tag: $(git -C "$PK_HOME" fetch --tags >/dev/null 2>&1; git -C "$PK_HOME" tag --sort=-v:refname | head -n1)"
       echo "🔧 Last applied dev SHA: $(_pk_state_get last_applied_sha_dev unknown)"
       echo "🎤 PiKaraoke package: $(_pk_state_get pikaraoke_version unknown)"
+      echo "⬇️ yt-dlp package: $(_pk_state_get ytdlp_version unknown)"
       ;;
 
     reboot) echo "♻️ Rebooting Raspberry Pi…"; sudo reboot ;;
