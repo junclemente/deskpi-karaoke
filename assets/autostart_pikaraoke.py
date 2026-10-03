@@ -10,13 +10,18 @@ from concurrent.futures import ThreadPoolExecutor
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-# Ensure venv + deno binaries are available in PATH (pikaraoke, yt-dlp, deno)
+# Ensure venv + deno binaries are available in PATH (pikaraoke, yt-dlp, deno).
+# SHIM_BIN goes first so pikaraoke's "chromium-browser" lookup finds the
+# installer's X11 shim (see assets/chromium-browser) before /usr/bin's.
 HOME = Path.home()
+SHIM_BIN = HOME / ".deskpi-karaoke" / "bin"
 VENV_BIN = HOME / ".venv-pikaraoke" / "bin"
 DENO_BIN = HOME / ".deno" / "bin"
 
 base_path = os.environ.get("PATH", "")
-os.environ["PATH"] = f"{VENV_BIN}:{DENO_BIN}:/usr/local/bin:/usr/bin:/bin:{base_path}"
+os.environ["PATH"] = (
+    f"{SHIM_BIN}:{VENV_BIN}:{DENO_BIN}:/usr/local/bin:/usr/bin:/bin:{base_path}"
+)
 
 # Two log files, two rotation mechanisms:
 # - OUTPUT_LOG_FILE: the pikaraoke subprocess's own raw stdout/stderr, written

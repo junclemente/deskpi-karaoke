@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.8.3] - 2026-10-03
+
+### 🐛 Fixes
+
+- **Fixed v0.8.2's X11 workaround, which stopped Chromium from starting at
+  boot.** v0.8.2 removed `WAYLAND_DISPLAY` and relied on `CHROMIUM_FLAGS`
+  reaching Chromium; on the Pi it didn't, so Chromium (still seeing
+  `XDG_SESSION_TYPE=wayland`) tried a Wayland socket that wasn't there and
+  exited silently. PiKaraoke's server came up but no splash screen ever
+  appeared.
+  - The environment is no longer touched. Instead the installer copies a
+    small `chromium-browser` shim to `~/.deskpi-karaoke/bin/`, and
+    `autostart_pikaraoke.py` puts that directory first on `PATH`. pikaraoke
+    looks up `chromium-browser` first, so it runs the shim, which execs the
+    real `/usr/bin/chromium-browser` (or `/usr/bin/chromium`) with
+    `--ozone-platform=x11` added. This matches the manual command
+    that was verified to fill the TV.
+  - The shim appends Chromium's output to `~/pikaraoke_output.log`
+    (pikaraoke otherwise discards it), so a browser that fails at launch
+    now leaves a trace.
+
+## [v0.8.2] - 2026-10-03
+
+### 🐛 Fixes
+
+- **PiKaraoke's splash screen now fills the TV instead of a small strip in
+  the top-left corner.** On Bookworm's Wayfire session, Chromium running
+  natively on Wayland takes the fullscreen kiosk role (hiding the taskbar)
+  but only paints a small corner of the page, leaving the wallpaper visible.
+  The same page through XWayland fills the screen. pikaraoke builds its own
+  Chromium command line, so `autostart_pikaraoke.py` now launches pikaraoke
+  with `WAYLAND_DISPLAY` removed and `CHROMIUM_FLAGS=--ozone-platform=x11`
+  (via the new `browser_env()` helper), steering only that Chromium onto X11
+  without patching pikaraoke or touching system-wide Chromium config.
+  *(Superseded in v0.8.3: this approach kept Chromium from starting at boot.)*
+
 ## [v0.8.1] - 2026-10-03
 
 ### 🐛 Fixes

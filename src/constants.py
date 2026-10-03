@@ -11,6 +11,10 @@ from pathlib import Path
 HOME = Path.home()
 VENV_DIR = HOME / ".venv-pikaraoke"
 STATE_DIR = HOME / ".deskpi-karaoke"
+# X11 Chromium shim dir; autostart_pikaraoke.py hardcodes the same path
+# since it runs from $HOME without access to this package.
+SHIM_BIN_DIR = STATE_DIR / "bin"
+CHROMIUM_SHIM_PATH = SHIM_BIN_DIR / "chromium-browser"
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ASSETS_DIR = REPO_ROOT / "assets"
 AUTOSTART_DIR = HOME / ".config" / "autostart"

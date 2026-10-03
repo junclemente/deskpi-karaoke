@@ -1,0 +1,21 @@
+#!/bin/sh
+# deskpi-karaoke shim: run pikaraoke's kiosk Chromium through X11 (XWayland).
+#
+# Native-Wayland Chromium under Bookworm's Wayfire takes the fullscreen kiosk
+# role but only paints a small strip in the top-left corner. pikaraoke builds
+# its own Chromium command line, so autostart_pikaraoke.py puts this shim's
+# directory first on PATH (pikaraoke looks up "chromium-browser" first) and
+# the shim adds the flag before handing off to the real browser.
+#
+# pikaraoke discards Chromium's output, so a browser that dies at launch
+# leaves no trace; append it to pikaraoke_output.log instead (already
+# rotated by logrotate with copytruncate, see src/logs.py).
+LOG="$HOME/pikaraoke_output.log"
+for real in /usr/bin/chromium-browser /usr/bin/chromium; do
+    if [ -x "$real" ]; then
+        echo "[$(date '+%F %T')] chromium shim: $real --ozone-platform=x11" >>"$LOG"
+        exec "$real" --ozone-platform=x11 "$@" >>"$LOG" 2>&1
+    fi
+done
+echo "[$(date '+%F %T')] chromium shim: no system Chromium found" >>"$LOG"
+exit 127

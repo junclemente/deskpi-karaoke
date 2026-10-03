@@ -25,6 +25,12 @@ def copy_assets():
         constants.ASSETS_DIR / "state_toml.py", constants.STATE_TOML_HELPER_PATH
     )
     shutil.copy2(constants.ASSETS_DIR / "pikaraoke_icon.png", constants.ICON_PATH)
+    # X11 shim that pikaraoke's kiosk Chromium launch resolves via PATH
+    constants.SHIM_BIN_DIR.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(
+        constants.ASSETS_DIR / "chromium-browser", constants.CHROMIUM_SHIM_PATH
+    )
+    constants.CHROMIUM_SHIM_PATH.chmod(0o755)
     # desktop entry
     constants.DESKTOP_FILE_PATH.write_text(
         f"""[Desktop Entry]
