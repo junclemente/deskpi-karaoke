@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.8.1] - 2026-10-03
+
+### 🐛 Fixes
+
+- **Installer now removes stale pre-installer desktop icons.** Pis first set
+  up by hand (before this repo) carry `~/Desktop/start_pikaraoke.desktop`
+  ("Start Pikaraoke") and `~/Desktop/UpgradePikaraoke.desktop` ("Upgrade
+  Pikaraoke"), which launch pikaraoke from the old `~/.venv` via
+  `lxterminal`. Neither install nor uninstall knew about them, so they
+  survived every update next to the real mascot icon. `copy_assets()` now
+  sweeps them (only if the file mentions pikaraoke, so an unrelated file with
+  the same name is left alone), and `uninstall_clean.py` removes them too.
+
 ## [v0.8.0] - 2026-07-08
 
 ### 🚀 New Features

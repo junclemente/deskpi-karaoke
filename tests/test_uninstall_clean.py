@@ -52,6 +52,12 @@ def test_remove_shortcuts_and_scripts_removes_current_and_legacy(tmp_path, monke
     shortcut = tmp_path / "Desktop" / "Start PiKaraoke.desktop"
     shortcut.parent.mkdir()
     shortcut.write_text("x")
+    legacy_icons = [
+        shortcut.parent / "start_pikaraoke.desktop",
+        shortcut.parent / "UpgradePikaraoke.desktop",
+    ]
+    for p in legacy_icons:
+        p.write_text("x")
     legacy_sh = tmp_path / "pikaraoke_start_script.sh"
     legacy_launcher = tmp_path / "pikaraoke_launcher.sh"
     legacy_start_py = tmp_path / "pikaraoke_start.py"
@@ -60,10 +66,12 @@ def test_remove_shortcuts_and_scripts_removes_current_and_legacy(tmp_path, monke
 
     monkeypatch.setattr(uninstall_clean.constants, "HOME", tmp_path)
     monkeypatch.setattr(uninstall_clean.constants, "DESKTOP_SHORTCUT_PATH", shortcut)
+    monkeypatch.setattr(uninstall_clean.constants, "DESKTOP_DIR", shortcut.parent)
 
     uninstall_clean.remove_shortcuts_and_scripts()
 
     assert not shortcut.exists()
+    assert not any(p.exists() for p in legacy_icons)
     assert not legacy_sh.exists()
     assert not legacy_launcher.exists()
     assert not legacy_start_py.exists()
