@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.8.2] - 2026-10-03
+
+### 🐛 Fixes
+
+- **PiKaraoke's splash screen now fills the TV instead of a small strip in
+  the top-left corner.** On Bookworm's Wayfire session, Chromium running
+  natively on Wayland takes the fullscreen kiosk role (hiding the taskbar)
+  but only paints a small corner of the page, leaving the wallpaper visible.
+  The same page through XWayland fills the screen. pikaraoke builds its own
+  Chromium command line, so `autostart_pikaraoke.py` now launches pikaraoke
+  with `WAYLAND_DISPLAY` removed and `CHROMIUM_FLAGS=--ozone-platform=x11`
+  (via the new `browser_env()` helper), steering only that Chromium onto X11
+  without patching pikaraoke or touching system-wide Chromium config.
+
 ## [v0.8.1] - 2026-10-03
 
 ### 🐛 Fixes

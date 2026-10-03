@@ -89,9 +89,28 @@ def check_internet(timeout=3):
         return False
 
 
+def browser_env(base_env):
+    """Return a copy of base_env that makes pikaraoke's Chromium use X11.
+
+    Native-Wayland Chromium under Bookworm's Wayfire takes the fullscreen
+    kiosk role but only paints a small strip in the top-left corner; the
+    same page via XWayland fills the screen. pikaraoke builds its own
+    Chromium command line, so steer it from the environment instead:
+    without WAYLAND_DISPLAY Chromium's ozone auto-detection falls back to
+    X11, and CHROMIUM_FLAGS (honored by Debian's chromium wrapper) makes
+    it explicit.
+    """
+    env = dict(base_env)
+    env.pop("WAYLAND_DISPLAY", None)
+    env.setdefault("DISPLAY", ":0")
+    flags = env.get("CHROMIUM_FLAGS", "")
+    if "--ozone-platform=" not in flags:
+        env["CHROMIUM_FLAGS"] = f"{flags} --ozone-platform=x11".strip()
+    return env
+
+
 def launch_pikaraoke():
-    env = os.environ.copy()
-    env["PATH"] = os.environ["PATH"]
+    env = browser_env(os.environ)
     logger.info("🎤 Launching PiKaraoke @ %s", time.strftime("%Y-%m-%d %H:%M:%S"))
     if not (VENV_BIN / "yt-dlp").exists():
         logger.warning("⚠️ yt-dlp not found in venv bin")
