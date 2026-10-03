@@ -48,6 +48,8 @@ def remove_shortcuts_and_scripts():
     logger.info("🔍 Removing desktop shortcuts and scripts...")
     home = constants.HOME
     safe_remove(constants.DESKTOP_SHORTCUT_PATH)
+    for name in constants.LEGACY_DESKTOP_SHORTCUT_NAMES:
+        safe_remove(constants.DESKTOP_DIR / name)
     safe_remove(home / "pikaraoke_start_script.sh")
     safe_remove(home / "pikaraoke_launcher.sh")
     safe_remove(home / "pikaraoke_start.py")

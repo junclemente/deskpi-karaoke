@@ -6,6 +6,7 @@ import socket
 import subprocess
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -49,14 +50,34 @@ except Exception:
 
 
 from pikaraoke_ui import show_error, show_info
-from state_toml import save_state
+from state_toml import load_state, save_state
 
 CHECK_INTERVAL = 5
 INITIAL_WAIT = 10
 EXTENDED_WAIT = 30
 UPDATE_TIMEOUT = 180
 
+# Throttle PyPI polling per package — a kiosk device reboots far more often
+# than either package cuts a new release, so there's no need to hit PyPI on
+# every single boot.
+VERSION_CHECK_INTERVAL = 6 * 60 * 60
+
 STATE_FILE = HOME / ".deskpi-karaoke" / "state.toml"
+
+# name -> where its installed/last-checked info lives in state.toml, and
+# where to ask PyPI for its latest release
+PACKAGES = {
+    "pikaraoke": {
+        "version_key": "pikaraoke_version",
+        "checked_key": "pikaraoke_checked_at",
+        "pypi_url": "https://pypi.org/pypi/pikaraoke/json",
+    },
+    "yt-dlp": {
+        "version_key": "ytdlp_version",
+        "checked_key": "ytdlp_checked_at",
+        "pypi_url": "https://pypi.org/pypi/yt-dlp/json",
+    },
+}
 
 
 def check_internet(timeout=3):
@@ -88,10 +109,10 @@ def launch_pikaraoke():
         logger.error("❌ Failed to launch PiKaraoke: %s", e)
 
 
-def get_installed_pikaraoke_version():
+def get_installed_version(package):
     try:
         out = subprocess.check_output(
-            [str(VENV_BIN / "pip"), "show", "pikaraoke"], text=True
+            [str(VENV_BIN / "pip"), "show", package], text=True
         )
         for line in out.splitlines():
             if line.startswith("Version:"):
@@ -101,28 +122,19 @@ def get_installed_pikaraoke_version():
     return Version("0.0.0")
 
 
-def get_latest_pikaraoke_version(timeout=5):
-    url = "https://pypi.org/pypi/pikaraoke/json"
+def get_latest_version(pypi_url, timeout=5):
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as r:
+        with urllib.request.urlopen(pypi_url, timeout=timeout) as r:
             data = json.load(r)
             return Version(data["info"]["version"])
     except Exception:
         return None
 
 
-def store_pikaraoke_version(version):
-    """Persist the currently-installed pikaraoke version, readable without a venv pip call."""
-    try:
-        save_state(STATE_FILE, {"pikaraoke_version": str(version)})
-    except Exception:
-        pass
-
-
-def update_pikaraoke(target_version):
-    """Upgrade pikaraoke and yt-dlp in the venv."""
+def update_package(package, target_version):
     logger.info(
-        "🔄 Upgrading pikaraoke to %s + yt-dlp @ %s",
+        "🔄 Upgrading %s to %s @ %s",
+        package,
         target_version,
         time.strftime("%Y-%m-%d %H:%M:%S"),
     )
@@ -133,54 +145,90 @@ def update_pikaraoke(target_version):
                     str(VENV_BIN / "pip"),
                     "install",
                     "--upgrade",
-                    f"pikaraoke=={target_version}",
-                    "yt-dlp",
+                    f"{package}=={target_version}",
                 ],
                 stdout=log,
                 stderr=subprocess.STDOUT,
                 timeout=UPDATE_TIMEOUT,
             )
             if result.returncode != 0:
-                logger.warning("⚠️ pip upgrade exited with non-zero status")
+                logger.warning("⚠️ %s pip upgrade exited with non-zero status", package)
             else:
-                logger.info("✅ pip upgrade completed")
+                logger.info("✅ %s pip upgrade completed", package)
         except subprocess.TimeoutExpired:
-            logger.error("❌ pip upgrade timed out after %ss", UPDATE_TIMEOUT)
+            logger.error(
+                "❌ %s pip upgrade timed out after %ss", package, UPDATE_TIMEOUT
+            )
 
 
-def check_and_update():
-    """Fetch the latest version from PyPI and upgrade if local version is outdated."""
-    installed = get_installed_pikaraoke_version()
-    latest = get_latest_pikaraoke_version()
-
-    # If PyPI is down or unreachable, gracefully skip updating and launch anyway
-    if latest is None:
-        logger.warning(
-            "⚠️ Unable to fetch latest version from PyPI. Skipping update check."
-        )
-        store_pikaraoke_version(installed)
-        return False
-
-    if installed < latest:
-        show_info(
-            f"🔄 Updating pikaraoke {installed} → {latest}\nUpdating before launch...",
-            duration=2,
-        )
-        update_pikaraoke(latest)  # Pass the target version down
-        installed = get_installed_pikaraoke_version()  # re-check actual result
-        store_pikaraoke_version(installed)
-        return True
-
-    store_pikaraoke_version(installed)
-    return False
-
-
-def safe_check_and_update():
-    """Run check_and_update() without letting any failure block the launch below."""
+def _due_for_pypi_check(state, checked_key):
     try:
-        check_and_update()
+        last_checked = float(state.get(checked_key, 0))
+    except (TypeError, ValueError):
+        last_checked = 0.0
+    return time.time() - last_checked >= VERSION_CHECK_INTERVAL
+
+
+def check_and_update_all():
+    """Check pikaraoke and yt-dlp for updates and upgrade whichever is outdated.
+
+    Latest-version lookups hit PyPI, so each package's is throttled to once
+    per VERSION_CHECK_INTERVAL (tracked via state.toml's *_checked_at keys),
+    and when more than one package is actually due, their PyPI requests run
+    concurrently rather than back-to-back.
+    """
+    state = load_state(STATE_FILE)
+    due = [
+        name
+        for name, spec in PACKAGES.items()
+        if _due_for_pypi_check(state, spec["checked_key"])
+    ]
+
+    latest = {}
+    if due:
+        with ThreadPoolExecutor(max_workers=len(due)) as pool:
+            futures = {
+                name: pool.submit(get_latest_version, PACKAGES[name]["pypi_url"])
+                for name in due
+            }
+            latest = {name: future.result() for name, future in futures.items()}
+
+    updates = {}
+    now = str(time.time())
+    for name, spec in PACKAGES.items():
+        installed = get_installed_version(name)
+
+        if name in due:
+            updates[spec["checked_key"]] = now
+            target = latest[name]
+            if target is None:
+                logger.warning(
+                    "⚠️ Unable to fetch latest %s version from PyPI. Skipping check.",
+                    name,
+                )
+            elif installed < target:
+                show_info(
+                    f"🔄 Updating {name} {installed} → {target}\n"
+                    "Updating before launch...",
+                    duration=2,
+                )
+                update_package(name, target)
+                installed = get_installed_version(name)  # re-check actual result
+
+        updates[spec["version_key"]] = str(installed)
+
+    try:
+        save_state(STATE_FILE, updates)
+    except Exception:
+        pass
+
+
+def safe_check_and_update_all():
+    """Run check_and_update_all() without letting any failure block the launch below."""
+    try:
+        check_and_update_all()
     except Exception as e:
-        logger.error("❌ check_and_update() failed: %s", e)
+        logger.error("❌ check_and_update_all() failed: %s", e)
 
 
 def main():
@@ -188,7 +236,7 @@ def main():
     start = time.time()
     while time.time() - start < INITIAL_WAIT:
         if check_internet():
-            safe_check_and_update()
+            safe_check_and_update_all()
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return
@@ -201,7 +249,7 @@ def main():
     start = time.time()
     while time.time() - start < EXTENDED_WAIT:
         if check_internet():
-            safe_check_and_update()
+            safe_check_and_update_all()
             show_info("✅ Internet connected.\nLaunching PiKaraoke...", duration=2)
             launch_pikaraoke()
             return

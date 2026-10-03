@@ -179,3 +179,25 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
 
     assert "# >>> deskpi-karaoke aliases >>>" in (home / ".bashrc").read_text()
     assert "# >>> deskpi-karaoke aliases >>>" in (home / ".zshrc").read_text()
+
+
+def test_remove_legacy_desktop_shortcuts_only_removes_pikaraoke_files(
+    tmp_path, monkeypatch
+):
+    desktop_dir = tmp_path / "Desktop"
+    desktop_dir.mkdir()
+    legacy_start = desktop_dir / "start_pikaraoke.desktop"
+    legacy_start.write_text("Exec=lxterminal -e pikaraoke\n")
+    # same legacy name but not ours -> must survive
+    unrelated = desktop_dir / "UpgradePikaraoke.desktop"
+    unrelated.write_text("Exec=something-else\n")
+    current = desktop_dir / "Start PiKaraoke.desktop"
+    current.write_text("Exec=pikaraoke\n")
+    monkeypatch.setattr(assets.constants, "DESKTOP_DIR", desktop_dir)
+
+    assets.remove_legacy_desktop_shortcuts()
+    assets.remove_legacy_desktop_shortcuts()  # idempotent on a clean desktop
+
+    assert not legacy_start.exists()
+    assert unrelated.exists()
+    assert current.exists()

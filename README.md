@@ -239,6 +239,10 @@ which holds:
 - `version` — last installed release tag (main)
 - `last_applied_sha_dev` — last applied dev commit
 - `pikaraoke_version` — currently-installed PiKaraoke package version
+- `ytdlp_version` — currently-installed yt-dlp package version
+- `pikaraoke_checked_at` / `ytdlp_checked_at` — Unix timestamp of the last
+  PyPI "latest version" check for each package; throttles autostart's
+  update check to once every 6 hours per package
 - `reboot_required` — set when `--deskpi` freshly installs drivers; `pk update`/
   `pk devupdate` reboot automatically when this is `true`
 
@@ -336,6 +340,13 @@ installed on the Raspberry Pi itself; `install.py` and `src/` remain stdlib-only
 - **Only tags on `main` are considered production releases.**
 - Documentation-only changes do **not** require a new version tag.
 - The installer is designed to be **idempotent and safe to re-run**.
+
+---
+
+## 🙏 Acknowledgments
+
+- [Google Gemini](https://gemini.google.com/) was used to help draft prompts
+  for this project.
 
 ---
 

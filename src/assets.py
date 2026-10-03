@@ -52,6 +52,7 @@ Type=Application
     # LXDE/PCManFM refuses to run a double-clicked .desktop file that isn't
     # marked executable, showing a "trust" prompt instead of launching it.
     constants.DESKTOP_SHORTCUT_PATH.chmod(0o755)
+    remove_legacy_desktop_shortcuts()
     enable_quick_exec()
     # pk_aliases
     aliases_src = constants.ASSETS_DIR / "pk_aliases"
@@ -59,6 +60,22 @@ Type=Application
         shutil.copy2(aliases_src, constants.PK_ALIASES_PATH)
         ensure_rc_sourced(constants.HOME / ".bashrc")
         ensure_rc_sourced(constants.HOME / ".zshrc")
+
+
+def remove_legacy_desktop_shortcuts():
+    """Delete the pre-installer manual-setup desktop icons, if present.
+
+    Only removes a file whose content mentions pikaraoke, so an unrelated
+    user file that happens to share a name is left alone.
+    """
+    for name in constants.LEGACY_DESKTOP_SHORTCUT_NAMES:
+        path = constants.DESKTOP_DIR / name
+        try:
+            if path.is_file() and "pikaraoke" in path.read_text().lower():
+                path.unlink()
+                logger.info("🗑️ Removed legacy desktop icon: %s", path)
+        except OSError as e:
+            logger.warning("⚠️  Could not remove legacy icon %s: %s", path, e)
 
 
 def enable_quick_exec():

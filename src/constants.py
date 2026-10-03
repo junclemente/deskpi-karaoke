@@ -17,6 +17,11 @@ AUTOSTART_DIR = HOME / ".config" / "autostart"
 DESKTOP_FILE_PATH = AUTOSTART_DIR / "pikaraoke.desktop"
 DESKTOP_DIR = HOME / "Desktop"
 DESKTOP_SHORTCUT_PATH = DESKTOP_DIR / "Start PiKaraoke.desktop"
+# Desktop icons from the pre-installer manual setup (Oct 2024) that launched
+# pikaraoke from the old ~/.venv via lxterminal. Nothing current creates
+# them, but install.py and uninstall_clean.py sweep them so upgraded Pis
+# don't keep a stale second "Start" icon pointing at a dead venv.
+LEGACY_DESKTOP_SHORTCUT_NAMES = ("start_pikaraoke.desktop", "UpgradePikaraoke.desktop")
 LIBFM_CONFIG_PATH = HOME / ".config" / "libfm" / "libfm.conf"
 ICON_PATH = HOME / "pikaraoke_icon.png"
 AUTOSTART_SCRIPT_PATH = HOME / "autostart_pikaraoke.py"
