@@ -128,6 +128,7 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
     (assets_dir / "state_toml.py").write_text("# state_toml stub")
     (assets_dir / "pikaraoke_icon.png").write_text("# icon stub")
     (assets_dir / "pk_aliases").write_text("# aliases stub")
+    (assets_dir / "chromium-browser").write_text("# shim stub")
 
     venv_dir = home / ".venv-pikaraoke"
     autostart_dir = home / ".config" / "autostart"
@@ -158,8 +159,15 @@ def test_copy_assets_copies_files_and_writes_desktop_entry(tmp_path, monkeypatch
     monkeypatch.setattr(assets.constants, "PK_ALIASES_PATH", pk_aliases_path)
     libfm_conf = home / ".config" / "libfm" / "libfm.conf"
     monkeypatch.setattr(assets.constants, "LIBFM_CONFIG_PATH", libfm_conf)
+    shim_dir = home / ".deskpi-karaoke" / "bin"
+    shim_path = shim_dir / "chromium-browser"
+    monkeypatch.setattr(assets.constants, "SHIM_BIN_DIR", shim_dir)
+    monkeypatch.setattr(assets.constants, "CHROMIUM_SHIM_PATH", shim_path)
 
     assets.copy_assets()
+
+    assert shim_path.read_text() == "# shim stub"
+    assert shim_path.stat().st_mode & 0o111 == 0o111
 
     assert autostart_script_path.read_text() == "# autostart stub"
     assert pikaraoke_ui_path.read_text() == "# ui stub"
